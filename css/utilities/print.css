@@ -1,0 +1,890 @@
+/* Print Utilities - Print-Specific Styles */
+/* Optimized styles for printing fantasy football reports and documentation */
+
+/* ========================================
+   PRINT RESET & OPTIMIZATION
+   ======================================== */
+
+@media print {
+    /* Reset for print */
+    * {
+        background: transparent !important;
+        color: black !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+    
+    /* Page setup */
+    @page {
+        margin: 0.5in;
+        size: letter;
+    }
+    
+    @page :first {
+        margin-top: 0.5in;
+    }
+    
+    /* Base print styles */
+    body {
+        font-family: 'Times New Roman', serif !important;
+        font-size: 12pt !important;
+        line-height: 1.4 !important;
+        color: black !important;
+        background: white !important;
+    }
+    
+    /* Remove interactive elements */
+    .sidebar,
+    .mobile-toggle,
+    .config-button,
+    .notification,
+    .modal-backdrop,
+    .loading-indicator,
+    .skip-nav {
+        display: none !important;
+    }
+    
+    /* Adjust main layout for print */
+    .app-container {
+        display: block !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+}
+
+/* ========================================
+   PRINT VISIBILITY UTILITIES
+   ======================================== */
+
+.print-hidden {
+    display: none !important;
+}
+
+@media print {
+    .print-visible {
+        display: block !important;
+    }
+    
+    .print-inline {
+        display: inline !important;
+    }
+    
+    .print-inline-block {
+        display: inline-block !important;
+    }
+    
+    .screen-only {
+        display: none !important;
+    }
+}
+
+@media screen {
+    .print-only {
+        display: none !important;
+    }
+}
+
+/* ========================================
+   PRINT PAGE BREAKS
+   ======================================== */
+
+@media print {
+    .page-break-before {
+        page-break-before: always;
+    }
+    
+    .page-break-after {
+        page-break-after: always;
+    }
+    
+    .page-break-inside-avoid {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+    .page-break-auto {
+        page-break-before: auto;
+        page-break-after: auto;
+    }
+    
+    /* Avoid breaking these elements */
+    .card,
+    .metric-card,
+    .feature-card,
+    .activity-item,
+    .team-option,
+    .player-row {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+    /* Keep headers with content */
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+    
+    /* Avoid widows and orphans */
+    p {
+        orphans: 3;
+        widows: 3;
+    }
+}
+
+/* ========================================
+   PRINT TYPOGRAPHY
+   ======================================== */
+
+@media print {
+    h1, h2, h3, h4, h5, h6 {
+        color: black !important;
+        background: none !important;
+        -webkit-text-fill-color: unset !important;
+        text-fill-color: unset !important;
+    }
+    
+    h1 {
+        font-size: 24pt !important;
+        margin-bottom: 12pt !important;
+        border-bottom: 2pt solid black !important;
+        padding-bottom: 6pt !important;
+    }
+    
+    h2 {
+        font-size: 20pt !important;
+        margin-top: 18pt !important;
+        margin-bottom: 10pt !important;
+    }
+    
+    h3 {
+        font-size: 16pt !important;
+        margin-top: 14pt !important;
+        margin-bottom: 8pt !important;
+    }
+    
+    h4 {
+        font-size: 14pt !important;
+        margin-top: 12pt !important;
+        margin-bottom: 6pt !important;
+    }
+    
+    h5, h6 {
+        font-size: 12pt !important;
+        margin-top: 10pt !important;
+        margin-bottom: 4pt !important;
+    }
+    
+    p {
+        margin-bottom: 6pt !important;
+    }
+    
+    /* Links */
+    a {
+        color: black !important;
+        text-decoration: underline !important;
+    }
+    
+    a[href^="http"]:after {
+        content: " (" attr(href) ")";
+        font-size: 10pt;
+    }
+    
+    /* Lists */
+    ul, ol {
+        margin-bottom: 6pt !important;
+    }
+    
+    li {
+        margin-bottom: 2pt !important;
+    }
+}
+
+/* ========================================
+   PRINT LAYOUT & SPACING
+   ======================================== */
+
+@media print {
+    .page-header {
+        border-bottom: 2pt solid black !important;
+        margin-bottom: 12pt !important;
+        padding-bottom: 6pt !important;
+        background: none !important;
+        backdrop-filter: none !important;
+    }
+    
+    .card {
+        border: 1pt solid black !important;
+        margin-bottom: 12pt !important;
+        padding: 8pt !important;
+        background: none !important;
+    }
+    
+    .card-header {
+        border-bottom: 1pt solid black !important;
+        margin-bottom: 6pt !important;
+        padding-bottom: 4pt !important;
+    }
+    
+    .card-title {
+        color: black !important;
+        font-weight: bold !important;
+    }
+    
+    /* Grid adjustments */
+    .grid,
+    .analytics-grid,
+    .metrics-overview {
+        display: block !important;
+    }
+    
+    .grid > *,
+    .analytics-grid > *,
+    .metrics-overview > * {
+        margin-bottom: 8pt !important;
+        break-inside: avoid !important;
+    }
+}
+
+/* ========================================
+   PRINT TABLES
+   ======================================== */
+
+@media print {
+    table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        margin-bottom: 12pt !important;
+    }
+    
+    th, td {
+        border: 1pt solid black !important;
+        padding: 4pt 6pt !important;
+        text-align: left !important;
+    }
+    
+    th {
+        background: #f0f0f0 !important;
+        color: black !important;
+        font-weight: bold !important;
+    }
+    
+    thead {
+        display: table-header-group !important;
+    }
+    
+    tbody {
+        display: table-row-group !important;
+    }
+    
+    tr {
+        page-break-inside: avoid !important;
+    }
+}
+
+/* ========================================
+   FANTASY FOOTBALL PRINT STYLES
+   ======================================== */
+
+@media print {
+    /* Player information */
+    .player-row {
+        border-bottom: 1pt dotted black !important;
+        padding: 3pt 0 !important;
+        margin-bottom: 3pt !important;
+    }
+    
+    .player-name {
+        font-weight: bold !important;
+        color: black !important;
+    }
+    
+    .player-details {
+        color: #666 !important;
+        font-size: 10pt !important;
+    }
+    
+    /* Team information */
+    .team-option {
+        border: 1pt solid black !important;
+        margin-bottom: 6pt !important;
+        padding: 4pt !important;
+    }
+    
+    .team-name {
+        font-weight: bold !important;
+        color: black !important;
+    }
+    
+    .team-stats {
+        font-size: 10pt !important;
+        color: #666 !important;
+    }
+    
+    /* Metrics and statistics */
+    .metric-card {
+        border: 1pt solid black !important;
+        text-align: center !important;
+        padding: 6pt !important;
+        margin-bottom: 8pt !important;
+    }
+    
+    .metric-value {
+        font-size: 16pt !important;
+        font-weight: bold !important;
+        color: black !important;
+    }
+    
+    .metric-label {
+        font-size: 10pt !important;
+        color: black !important;
+        text-transform: uppercase !important;
+    }
+    
+    /* Draft tracker */
+    .draft-pick {
+        border-left: 3pt solid black !important;
+        padding-left: 6pt !important;
+        margin-bottom: 4pt !important;
+    }
+    
+    .pick-number {
+        font-weight: bold !important;
+        color: black !important;
+    }
+    
+    /* Learning progress */
+    .progress-bar {
+        border: 1pt solid black !important;
+        height: 8pt !important;
+        background: white !important;
+    }
+    
+    .progress-fill {
+        background: black !important;
+    }
+}
+
+/* ========================================
+   PRINT HEADER & FOOTER
+   ======================================== */
+
+@media print {
+    /* Print header */
+    .print-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 0.5in;
+        border-bottom: 1pt solid black;
+        padding: 4pt;
+        font-size: 10pt;
+        text-align: center;
+    }
+    
+    /* Print footer */
+    .print-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 0.3in;
+        border-top: 1pt solid black;
+        padding: 2pt;
+        font-size: 8pt;
+        text-align: center;
+    }
+    
+    /* Page numbering */
+    .print-footer::after {
+        content: "Page " counter(page);
+    }
+    
+    /* Date and time */
+    .print-date::after {
+        content: "Printed: " attr(data-date);
+    }
+}
+
+/* ========================================
+   PRINT ICONS & GRAPHICS
+   ======================================== */
+
+@media print {
+    /* Replace emoji icons with text */
+    .icon::after {
+        content: "[" attr(title) "]";
+        font-size: 8pt;
+    }
+    
+    /* Handle background images */
+    .feature-icon,
+    .action-icon,
+    .empty-state .icon {
+        font-size: 12pt !important;
+        color: black !important;
+    }
+    
+    /* Status indicators */
+    .status-indicator::after {
+        content: "[" attr(aria-label) "]";
+        font-size: 8pt;
+    }
+    
+    .status-indicator.online::after {
+        content: "[Online]";
+    }
+    
+    .status-indicator.offline::after {
+        content: "[Offline]";
+    }
+    
+    .status-indicator.warning::after {
+        content: "[Warning]";
+    }
+}
+
+/* ========================================
+   PRINT FORM ELEMENTS
+   ======================================== */
+
+@media print {
+    .form-input,
+    .form-select,
+    .form-textarea {
+        border: 1pt solid black !important;
+        background: white !important;
+        color: black !important;
+        padding: 2pt !important;
+    }
+    
+    .form-label {
+        font-weight: bold !important;
+        color: black !important;
+    }
+    
+    /* Checkbox and radio styling */
+    input[type="checkbox"],
+    input[type="radio"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 8pt;
+        height: 8pt;
+        border: 1pt solid black;
+        margin-right: 3pt;
+    }
+    
+    input[type="checkbox"]:checked::after {
+        content: "✓";
+        font-size: 6pt;
+        text-align: center;
+    }
+    
+    input[type="radio"]:checked::after {
+        content: "●";
+        font-size: 6pt;
+        text-align: center;
+    }
+}
+
+/* ========================================
+   PRINT CHARTS & VISUALIZATIONS
+   ======================================== */
+
+@media print {
+    .chart-container {
+        border: 2pt solid black !important;
+        padding: 8pt !important;
+        margin-bottom: 12pt !important;
+        background: white !important;
+    }
+    
+    .chart-title {
+        font-weight: bold !important;
+        color: black !important;
+        border-bottom: 1pt solid black !important;
+        padding-bottom: 4pt !important;
+        margin-bottom: 8pt !important;
+    }
+    
+    .chart-content {
+        border: 1pt dotted black !important;
+        background: white !important;
+        color: black !important;
+        text-align: center !important;
+        padding: 12pt !important;
+    }
+    
+    .chart-content::after {
+        content: "[Chart data would appear here in digital version]";
+        font-style: italic;
+        font-size: 10pt;
+    }
+}
+
+/* ========================================
+   PRINT ACTIVITY FEEDS
+   ======================================== */
+
+@media print {
+    .activity-feed {
+        border: 1pt solid black !important;
+        background: white !important;
+    }
+    
+    .activity-header {
+        background: #f0f0f0 !important;
+        border-bottom: 1pt solid black !important;
+        padding: 4pt 6pt !important;
+    }
+    
+    .activity-item {
+        border-bottom: 1pt dotted black !important;
+        padding: 4pt 6pt !important;
+    }
+    
+    .activity-icon {
+        display: none !important;
+    }
+    
+    .activity-text {
+        color: black !important;
+    }
+    
+    .activity-time {
+        color: #666 !important;
+        font-size: 9pt !important;
+    }
+    
+    .activity-time::before {
+        content: "[";
+    }
+    
+    .activity-time::after {
+        content: "]";
+    }
+}
+
+/* ========================================
+   PRINT NOTIFICATIONS & ALERTS
+   ======================================== */
+
+@media print {
+    .notification,
+    .alert {
+        border: 2pt solid black !important;
+        background: none !important;
+        color: black !important;
+        margin-bottom: 8pt !important;
+        padding: 6pt !important;
+    }
+    
+    .notification-title,
+    .alert-title {
+        font-weight: bold !important;
+        color: black !important;
+    }
+    
+    .notification-message,
+    .alert-message {
+        color: black !important;
+    }
+    
+    .notification-success,
+    .alert-success {
+        border-left: 4pt solid black !important;
+    }
+    
+    .notification-success::before,
+    .alert-success::before {
+        content: "✓ SUCCESS: ";
+        font-weight: bold;
+    }
+    
+    .notification-error,
+    .alert-error {
+        border-left: 4pt solid black !important;
+    }
+    
+    .notification-error::before,
+    .alert-error::before {
+        content: "⚠ ERROR: ";
+        font-weight: bold;
+    }
+    
+    .notification-warning,
+    .alert-warning {
+        border-left: 4pt solid black !important;
+    }
+    
+    .notification-warning::before,
+    .alert-warning::before {
+        content: "⚠ WARNING: ";
+        font-weight: bold;
+    }
+    
+    .notification-info,
+    .alert-info {
+        border-left: 4pt solid black !important;
+    }
+    
+    .notification-info::before,
+    .alert-info::before {
+        content: "ℹ INFO: ";
+        font-weight: bold;
+    }
+}
+
+/* ========================================
+   PRINT LEARNING MODULES
+   ======================================== */
+
+@media print {
+    .learning-tip {
+        border-left: 3pt solid black !important;
+        background: #f8f8f8 !important;
+        padding: 6pt !important;
+        margin: 8pt 0 !important;
+        font-style: italic !important;
+    }
+    
+    .learning-tip::before {
+        content: "💡 TIP: ";
+        font-weight: bold !important;
+        font-style: normal !important;
+    }
+    
+    .module-card {
+        border: 2pt solid black !important;
+        padding: 8pt !important;
+        margin-bottom: 12pt !important;
+        background: white !important;
+    }
+    
+    .progress-bar {
+        border: 1pt solid black !important;
+        height: 6pt !important;
+        background: white !important;
+        position: relative !important;
+    }
+    
+    .progress-fill {
+        background: black !important;
+        height: 100% !important;
+    }
+    
+    .progress-bar::after {
+        content: attr(aria-valuenow) "% complete";
+        position: absolute;
+        right: 0;
+        top: -12pt;
+        font-size: 8pt;
+        color: black;
+    }
+}
+
+/* ========================================
+   PRINT FANTASY SPECIFIC ELEMENTS
+   ======================================== */
+
+@media print {
+    /* Configuration panels */
+    .config-card {
+        border: 2pt solid black !important;
+        background: white !important;
+        padding: 12pt !important;
+        margin-bottom: 12pt !important;
+    }
+    
+    .config-section {
+        border-left: 3pt solid black !important;
+        padding: 6pt !important;
+        margin-bottom: 8pt !important;
+        background: #f8f8f8 !important;
+    }
+    
+    /* Team selections for reference */
+    .teams-grid {
+        display: block !important;
+    }
+    
+    .team-option.selected {
+        border: 3pt solid black !important;
+        background: #e8e8e8 !important;
+    }
+    
+    .team-option.selected::before {
+        content: "✓ SELECTED: ";
+        font-weight: bold;
+    }
+    
+    /* Draft recommendations */
+    .ai-recommendation {
+        border: 2pt solid black !important;
+        background: #f0f0f0 !important;
+        padding: 8pt !important;
+        margin: 8pt 0 !important;
+    }
+    
+    .recommendation-title {
+        font-weight: bold !important;
+        color: black !important;
+    }
+    
+    .confidence-badge::after {
+        content: " (Confidence: " attr(data-confidence) "%)";
+        font-weight: normal;
+    }
+    
+    /* Weather alerts */
+    .weather-alert {
+        border-left: 4pt solid black !important;
+        background: #f8f8f8 !important;
+        padding: 6pt !important;
+        margin: 6pt 0 !important;
+    }
+    
+    .weather-alert::before {
+        content: "⛅ WEATHER: ";
+        font-weight: bold;
+    }
+}
+
+/* ========================================
+   PRINT SUMMARY TABLES
+   ======================================== */
+
+@media print {
+    .print-summary {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin: 12pt 0 !important;
+        font-size: 10pt !important;
+    }
+    
+    .print-summary th {
+        background: #e0e0e0 !important;
+        padding: 4pt 6pt !important;
+        border: 1pt solid black !important;
+        font-weight: bold !important;
+        text-align: left !important;
+    }
+    
+    .print-summary td {
+        padding: 3pt 6pt !important;
+        border: 1pt solid black !important;
+        vertical-align: top !important;
+    }
+    
+    .print-summary tr:nth-child(even) td {
+        background: #f8f8f8 !important;
+    }
+}
+
+/* ========================================
+   PRINT QR CODES & REFERENCES
+   ======================================== */
+
+@media print {
+    .print-qr {
+        text-align: center !important;
+        margin: 12pt 0 !important;
+        padding: 8pt !important;
+        border: 1pt dotted black !important;
+    }
+    
+    .print-qr::after {
+        content: "Scan QR code or visit: " attr(data-url);
+        display: block;
+        font-size: 8pt;
+        margin-top: 4pt;
+    }
+    
+    .print-reference {
+        font-size: 8pt !important;
+        color: #666 !important;
+        margin-top: 12pt !important;
+        border-top: 1pt solid black !important;
+        padding-top: 4pt !important;
+    }
+    
+    .print-reference::before {
+        content: "Digital version available at: ";
+        font-weight: bold;
+    }
+}
+
+/* ========================================
+   PRINT UTILITIES
+   ======================================== */
+
+@media print {
+    .print-landscape {
+        page-orientation: landscape;
+    }
+    
+    .print-portrait {
+        page-orientation: portrait;
+    }
+    
+    .print-small-text {
+        font-size: 8pt !important;
+    }
+    
+    .print-large-text {
+        font-size: 14pt !important;
+    }
+    
+    .print-bold {
+        font-weight: bold !important;
+    }
+    
+    .print-italic {
+        font-style: italic !important;
+    }
+    
+    .print-center {
+        text-align: center !important;
+    }
+    
+    .print-right {
+        text-align: right !important;
+    }
+    
+    .print-border {
+        border: 1pt solid black !important;
+        padding: 4pt !important;
+    }
+    
+    .print-no-border {
+        border: none !important;
+    }
+    
+    .print-margin-sm {
+        margin: 4pt !important;
+    }
+    
+    .print-margin-md {
+        margin: 8pt !important;
+    }
+    
+    .print-margin-lg {
+        margin: 12pt !important;
+    }
+    
+    .print-padding-sm {
+        padding: 4pt !important;
+    }
+    
+    .print-padding-md {
+        padding: 8pt !important;
+    }
+    
+    .print-padding-lg {
+        padding: 12pt !important;
+    }
+}

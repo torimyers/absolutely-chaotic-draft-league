@@ -1,0 +1,89 @@
+{
+  "name": "Show Me Your TDs - Fantasy Football Command Center",
+  "short_name": "Fantasy TDs",
+  "description": "Educational fantasy football platform that teaches you WHY behind every decision",
+  "version": "1.0.0",
+  "start_url": "https://texasperfect.win/",
+  "display": "standalone",
+  "background_color": "#0c0c1e",
+  "theme_color": "#4ecdc4",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["sports", "education", "entertainment"],
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/4ecdc4/ffffff?text=🏈",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/4ecdc4/ffffff?text=🏈",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://via.placeholder.com/1280x720/0c0c1e/4ecdc4?text=Fantasy+Dashboard",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Fantasy Dashboard with AI insights"
+    },
+    {
+      "src": "https://via.placeholder.com/750x1334/0c0c1e/4ecdc4?text=Mobile+View",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "platform": "narrow",
+      "label": "Mobile fantasy management"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Draft Tracker",
+      "short_name": "Draft",
+      "description": "Live draft assistance with AI recommendations",
+      "url": "/?page=live-draft",
+      "icons": [
+        {
+          "src": "https://via.placeholder.com/96x96/ff6b6b/ffffff?text=🔥",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "My Team",
+      "short_name": "Team",
+      "description": "View your roster and optimize lineup",
+      "url": "/?page=my-team",
+      "icons": [
+        {
+          "src": "https://via.placeholder.com/96x96/45b7d1/ffffff?text=⭐",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Fantasy Academy",
+      "short_name": "Learn",
+      "description": "Educational modules to improve your fantasy skills",
+      "url": "/?page=fantasy-academy",
+      "icons": [
+        {
+          "src": "https://via.placeholder.com/96x96/2ecc71/ffffff?text=📚",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
+}

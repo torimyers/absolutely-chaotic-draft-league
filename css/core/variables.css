@@ -1,0 +1,167 @@
+/* CSS Custom Properties - Design System Foundation */
+/* Centralized design tokens for consistent theming and easy customization */
+
+:root {
+    /* ========================================
+       COLOR SYSTEM - Primary Brand Colors
+       ======================================== */
+    --primary-color: #4ecdc4;
+    --secondary-color: #ff6b6b;
+    --accent-color: #45b7d1;
+    
+    /* Status Colors */
+    --success-color: #2ecc71;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+    
+    /* Background Colors */
+    --dark-bg: #0c0c1e;
+    --card-bg: rgba(255, 255, 255, 0.08);
+    --border-color: rgba(255, 255, 255, 0.1);
+    
+    /* Text Colors */
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    
+    /* ========================================
+       SPACING SYSTEM - Design Scale
+       ======================================== */
+    --space-xs: 0.25rem;    /* 4px */
+    --space-sm: 0.5rem;     /* 8px */
+    --space-md: 1rem;       /* 16px */
+    --space-lg: 1.5rem;     /* 24px */
+    --space-xl: 2rem;       /* 32px */
+    --space-xxl: 3rem;      /* 48px */
+    
+    /* Component Spacing */
+    --padding-btn: var(--space-sm) var(--space-lg);
+    --padding-card: var(--space-lg);
+    --padding-input: var(--space-sm);
+    --margin-section: var(--space-xl);
+    
+    /* ========================================
+       TYPOGRAPHY SYSTEM
+       ======================================== */
+    --font-family-base: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    
+    /* Font Sizes */
+    --font-size-xs: 0.75rem;    /* 12px */
+    --font-size-sm: 0.875rem;   /* 14px */
+    --font-size-base: 1rem;     /* 16px */
+    --font-size-lg: 1.125rem;   /* 18px */
+    --font-size-xl: 1.25rem;    /* 20px */
+    --font-size-xxl: 1.5rem;    /* 24px */
+    --font-size-xxxl: 2rem;     /* 32px */
+    
+    /* Font Weights */
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    
+    /* Line Heights */
+    --line-height-tight: 1.25;
+    --line-height-base: 1.5;
+    --line-height-relaxed: 1.75;
+    
+    /* ========================================
+       LAYOUT SYSTEM
+       ======================================== */
+    --sidebar-width: 280px;
+    --border-radius: 8px;
+    --border-radius-lg: 15px;
+    --border-radius-xl: 20px;
+    
+    /* Grid System */
+    --grid-gap: var(--space-lg);
+    --grid-gap-sm: var(--space-md);
+    
+    /* Container Widths */
+    --container-max-width: 1200px;
+    --content-max-width: 800px;
+    
+    /* ========================================
+       COMPONENT TOKENS
+       ======================================== */
+    
+    /* Buttons */
+    --btn-border-radius: var(--border-radius);
+    --btn-font-weight: var(--font-weight-semibold);
+    --btn-transition: all 0.3s ease;
+    
+    /* Cards */
+    --card-border-radius: var(--border-radius-lg);
+    --card-backdrop-filter: blur(5px);
+    --card-border: 1px solid var(--border-color);
+    --card-hover-transform: translateY(-2px);
+    
+    /* Forms */
+    --input-border-radius: var(--border-radius);
+    --input-border: 1px solid var(--border-color);
+    --input-focus-border: var(--primary-color);
+    
+    /* Navigation */
+    --nav-item-border-radius: 10px;
+    --nav-item-hover-transform: translateX(5px);
+    
+    /* ========================================
+       ANIMATION SYSTEM
+       ======================================== */
+    --transition-fast: 0.15s ease;
+    --transition-base: 0.3s ease;
+    --transition-slow: 0.5s ease;
+    
+    /* Easing Functions */
+    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    --ease-in-out-cubic: cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* ========================================
+       Z-INDEX SYSTEM
+       ======================================== */
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal-backdrop: 400;
+    --z-modal: 500;
+    --z-popover: 600;
+    --z-tooltip: 700;
+    --z-toast: 800;
+}
+
+/* ========================================
+   THEME VARIANTS - Color Scheme Options
+   ======================================== */
+
+/* Blue Theme */
+body[data-theme="blue"] {
+    --primary-color: #3498db;
+    --accent-color: #2980b9;
+}
+
+/* Green Theme */
+body[data-theme="green"] {
+    --primary-color: #2ecc71;
+    --accent-color: #27ae60;
+}
+
+/* Purple Theme */
+body[data-theme="purple"] {
+    --primary-color: #9b59b6;
+    --accent-color: #8e44ad;
+}
+
+/* Red Theme */
+body[data-theme="red"] {
+    --primary-color: #e74c3c;
+    --accent-color: #c0392b;
+}
+
+/* ========================================
+   DARK MODE SUPPORT (Future Enhancement)
+   ======================================== */
+@media (prefers-color-scheme: light) {
+    :root {
+        /* Light mode overrides would go here */
+        /* Currently designed for dark mode primary */
+    }
+}

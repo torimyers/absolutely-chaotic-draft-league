@@ -1,0 +1,5 @@
+# Handle SPA routing - all routes go to index.html
+/*    /index.html   200
+
+# Redirect www to non-www
+https://www.texasperfect.win/*  https://texasperfect.win/:splat  301!

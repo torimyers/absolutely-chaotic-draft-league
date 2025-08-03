@@ -1,0 +1,363 @@
+/* Core Base Styles - Typography & Fundamental Elements */
+/* Base styling for body, typography, and core HTML elements */
+
+/* ========================================
+   TYPOGRAPHY FOUNDATION
+   ======================================== */
+
+/* Base font settings applied to body */
+body {
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-normal);
+    line-height: var(--line-height-base);
+    color: var(--text-primary);
+    background: linear-gradient(135deg, var(--dark-bg), #1a1a2e, #16213e);
+    min-height: 100vh;
+    overflow-x: hidden;
+    
+    /* Font rendering optimization */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* ========================================
+   HEADINGS SYSTEM
+   ======================================== */
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-tight);
+    margin-bottom: var(--space-md);
+    color: var(--text-primary);
+}
+
+h1 {
+    font-size: var(--font-size-xxxl);
+    font-weight: var(--font-weight-bold);
+    background: linear-gradient(45deg, var(--secondary-color), var(--primary-color), var(--accent-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+h2 {
+    font-size: var(--font-size-xxl);
+    color: var(--primary-color);
+}
+
+h3 {
+    font-size: var(--font-size-xl);
+    color: var(--primary-color);
+}
+
+h4 {
+    font-size: var(--font-size-lg);
+    color: var(--accent-color);
+}
+
+h5 {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+}
+
+h6 {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+/* ========================================
+   PARAGRAPH & TEXT ELEMENTS
+   ======================================== */
+
+p {
+    margin-bottom: var(--space-md);
+    line-height: var(--line-height-relaxed);
+    color: var(--text-secondary);
+}
+
+p:last-child {
+    margin-bottom: 0;
+}
+
+/* Text emphasis */
+strong, b {
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+}
+
+em, i {
+    font-style: italic;
+}
+
+/* Small text */
+small {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+/* Code and technical text */
+code, kbd, samp {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.9em;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    color: var(--accent-color);
+}
+
+pre {
+    background: rgba(255, 255, 255, 0.05);
+    padding: var(--space-md);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--accent-color);
+    overflow-x: auto;
+    margin-bottom: var(--space-md);
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    font-size: var(--font-size-sm);
+}
+
+/* ========================================
+   LINKS & INTERACTIVE TEXT
+   ======================================== */
+
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: var(--transition-base);
+    cursor: pointer;
+}
+
+a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+a:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* ========================================
+   LISTS
+   ======================================== */
+
+ul, ol {
+    margin-bottom: var(--space-md);
+    padding-left: var(--space-lg);
+}
+
+li {
+    margin-bottom: var(--space-xs);
+    line-height: var(--line-height-relaxed);
+    color: var(--text-secondary);
+}
+
+li:last-child {
+    margin-bottom: 0;
+}
+
+/* Custom list styling for content lists */
+.content ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.content ul li {
+    position: relative;
+    padding-left: var(--space-lg);
+}
+
+.content ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+/* ========================================
+   HORIZONTAL RULES
+   ======================================== */
+
+hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+    margin: var(--space-xl) 0;
+}
+
+/* ========================================
+   BLOCKQUOTES
+   ======================================== */
+
+blockquote {
+    background: rgba(69, 183, 209, 0.1);
+    border-left: 4px solid var(--accent-color);
+    padding: var(--space-md);
+    margin: var(--space-lg) 0;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+blockquote p {
+    margin-bottom: var(--space-sm);
+}
+
+blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+blockquote cite {
+    display: block;
+    text-align: right;
+    margin-top: var(--space-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+blockquote cite::before {
+    content: '— ';
+}
+
+/* ========================================
+   SELECTION STYLING
+   ======================================== */
+
+::selection {
+    background: rgba(78, 205, 196, 0.3);
+    color: var(--text-primary);
+}
+
+::-moz-selection {
+    background: rgba(78, 205, 196, 0.3);
+    color: var(--text-primary);
+}
+
+/* ========================================
+   FOCUS STATES
+   ======================================== */
+
+/* Remove default focus outline */
+:focus {
+    outline: none;
+}
+
+/* Add custom focus styles for keyboard navigation */
+:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* ========================================
+   TEXT UTILITIES BUILT INTO BASE
+   ======================================== */
+
+/* Text alignment */
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+/* Text colors for content */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-accent { color: var(--accent-color); }
+.text-success { color: var(--success-color); }
+.text-warning { color: var(--warning-color); }
+.text-danger { color: var(--danger-color); }
+
+/* Font weights */
+.font-normal { font-weight: var(--font-weight-normal); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-bold { font-weight: var(--font-weight-bold); }
+
+/* ========================================
+   RESPONSIVE TYPOGRAPHY
+   ======================================== */
+
+@media (max-width: 768px) {
+    body {
+        font-size: var(--font-size-sm);
+    }
+    
+    h1 {
+        font-size: var(--font-size-xxl);
+    }
+    
+    h2 {
+        font-size: var(--font-size-xl);
+    }
+    
+    h3 {
+        font-size: var(--font-size-lg);
+    }
+    
+    blockquote {
+        padding: var(--space-sm);
+        margin: var(--space-md) 0;
+    }
+    
+    pre {
+        padding: var(--space-sm);
+        font-size: var(--font-size-xs);
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: var(--font-size-xl);
+    }
+    
+    h2 {
+        font-size: var(--font-size-lg);
+    }
+    
+    ul, ol {
+        padding-left: var(--space-md);
+    }
+}
+
+/* ========================================
+   PRINT TYPOGRAPHY
+   ======================================== */
+
+@media print {
+    body {
+        font-family: 'Times New Roman', serif;
+        color: black;
+        background: white;
+        line-height: 1.6;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        color: black;
+        background: none;
+        -webkit-text-fill-color: unset;
+        page-break-after: avoid;
+    }
+    
+    p, li {
+        color: black;
+    }
+    
+    a {
+        color: black;
+        text-decoration: underline;
+    }
+    
+    blockquote {
+        border-left: 2px solid black;
+        background: none;
+    }
+}

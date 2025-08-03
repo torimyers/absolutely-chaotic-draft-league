@@ -1,0 +1,518 @@
+/* Modal & Overlay Component System */
+/* Modal dialogs, overlays, and popup interfaces */
+
+/* ========================================
+   MODAL BACKDROP
+   ======================================== */
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: var(--z-modal-backdrop);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-base);
+}
+
+.modal-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-backdrop.hidden {
+    display: none;
+}
+
+/* ========================================
+   MODAL CONTAINER
+   ======================================== */
+
+.modal {
+    background: var(--card-bg);
+    border-radius: var(--border-radius-xl);
+    padding: var(--space-xxl);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 2px solid var(--primary-color);
+    backdrop-filter: var(--card-backdrop-filter);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    position: relative;
+    transform: scale(0.9) translateY(20px);
+    transition: transform var(--transition-base);
+}
+
+.modal-backdrop.active .modal {
+    transform: scale(1) translateY(0);
+}
+
+/* ========================================
+   MODAL SIZES
+   ======================================== */
+
+.modal-sm {
+    max-width: 400px;
+}
+
+.modal-md {
+    max-width: 600px;
+}
+
+.modal-lg {
+    max-width: 800px;
+}
+
+.modal-xl {
+    max-width: 1000px;
+}
+
+.modal-fullscreen {
+    max-width: calc(100vw - var(--space-lg) * 2);
+    max-height: calc(100vh - var(--space-lg) * 2);
+    width: 100%;
+    height: 100%;
+}
+
+/* ========================================
+   MODAL HEADER
+   ======================================== */
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-md);
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.modal-title {
+    font-size: var(--font-size-xxl);
+    color: var(--primary-color);
+    margin: 0;
+    font-weight: var(--font-weight-bold);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: var(--font-size-xl);
+    cursor: pointer;
+    padding: var(--space-xs);
+    border-radius: var(--border-radius);
+    transition: var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    transform: scale(1.1);
+}
+
+.modal-close:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* ========================================
+   MODAL BODY
+   ======================================== */
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.modal-content {
+    line-height: var(--line-height-relaxed);
+    color: var(--text-secondary);
+}
+
+/* ========================================
+   MODAL FOOTER
+   ======================================== */
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-md);
+    margin-top: var(--space-xl);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.modal-footer.center {
+    justify-content: center;
+}
+
+.modal-footer.space-between {
+    justify-content: space-between;
+}
+
+/* ========================================
+   MODAL VARIANTS
+   ======================================== */
+
+/* Success Modal */
+.modal-success {
+    border-color: var(--success-color);
+}
+
+.modal-success .modal-title {
+    color: var(--success-color);
+}
+
+.modal-success .modal-header {
+    border-bottom-color: var(--success-color);
+}
+
+/* Warning Modal */
+.modal-warning {
+    border-color: var(--warning-color);
+}
+
+.modal-warning .modal-title {
+    color: var(--warning-color);
+}
+
+.modal-warning .modal-header {
+    border-bottom-color: var(--warning-color);
+}
+
+/* Danger Modal */
+.modal-danger {
+    border-color: var(--danger-color);
+}
+
+.modal-danger .modal-title {
+    color: var(--danger-color);
+}
+
+.modal-danger .modal-header {
+    border-bottom-color: var(--danger-color);
+}
+
+/* Info Modal */
+.modal-info {
+    border-color: var(--accent-color);
+}
+
+.modal-info .modal-title {
+    color: var(--accent-color);
+}
+
+.modal-info .modal-header {
+    border-bottom-color: var(--accent-color);
+}
+
+/* ========================================
+   MODAL ANIMATIONS
+   ======================================== */
+
+/* Fade in animation */
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(8px);
+    }
+}
+
+/* Slide up animation */
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(60px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Zoom animation */
+@keyframes modalZoom {
+    from {
+        opacity: 0;
+        transform: scale(0.3);
+    }
+    50% {
+        opacity: 1;
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Animation classes */
+.modal-fade-in {
+    animation: modalFadeIn var(--transition-base) ease-out;
+}
+
+.modal-slide-up {
+    animation: modalSlideUp var(--transition-base) var(--ease-out-quart);
+}
+
+.modal-zoom {
+    animation: modalZoom var(--transition-base) var(--ease-out-quart);
+}
+
+/* ========================================
+   MODAL SCROLLBAR STYLING
+   ======================================== */
+
+.modal::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.modal::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+    transition: var(--transition-base);
+}
+
+.modal::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color);
+}
+
+/* ========================================
+   CONFIRMATION DIALOGS
+   ======================================== */
+
+.modal-confirm {
+    max-width: 450px;
+    text-align: center;
+}
+
+.modal-confirm .modal-icon {
+    font-size: 4em;
+    margin-bottom: var(--space-lg);
+    display: block;
+}
+
+.modal-confirm.success .modal-icon {
+    color: var(--success-color);
+}
+
+.modal-confirm.warning .modal-icon {
+    color: var(--warning-color);
+}
+
+.modal-confirm.danger .modal-icon {
+    color: var(--danger-color);
+}
+
+.modal-confirm .modal-message {
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--space-xl);
+    line-height: var(--line-height-relaxed);
+}
+
+/* ========================================
+   LOADING MODALS
+   ======================================== */
+
+.modal-loading {
+    max-width: 300px;
+    text-align: center;
+    padding: var(--space-xl);
+}
+
+.modal-loading .loading-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto var(--space-lg);
+    border: 4px solid rgba(78, 205, 196, 0.3);
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.modal-loading .loading-text {
+    color: var(--text-secondary);
+    font-size: var(--font-size-lg);
+}
+
+/* ========================================
+   RESPONSIVE MODAL DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+    .modal-backdrop {
+        padding: var(--space-md);
+        align-items: flex-start;
+        padding-top: var(--space-xl);
+    }
+    
+    .modal {
+        padding: var(--space-lg);
+        margin: 0;
+        max-height: calc(100vh - var(--space-xl) * 2);
+        border-radius: var(--border-radius);
+    }
+    
+    .modal-fullscreen {
+        max-width: calc(100vw - var(--space-md) * 2);
+        max-height: calc(100vh - var(--space-md) * 2);
+    }
+    
+    .modal-title {
+        font-size: var(--font-size-xl);
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+    }
+    
+    .modal-header {
+        flex-direction: column;
+        gap: var(--space-sm);
+        text-align: center;
+    }
+    
+    .modal-close {
+        position: absolute;
+        top: var(--space-md);
+        right: var(--space-md);
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-backdrop {
+        padding: var(--space-sm);
+        padding-top: var(--space-lg);
+    }
+    
+    .modal {
+        padding: var(--space-md);
+        max-height: calc(100vh - var(--space-lg) * 2);
+    }
+    
+    .modal-title {
+        font-size: var(--font-size-lg);
+        padding-right: var(--space-xl);
+    }
+    
+    .modal-close {
+        top: var(--space-sm);
+        right: var(--space-sm);
+    }
+    
+    .modal-confirm .modal-icon {
+        font-size: 3em;
+    }
+}
+
+/* ========================================
+   ACCESSIBILITY ENHANCEMENTS
+   ======================================== */
+
+/* Focus trap for modals */
+.modal-backdrop.active {
+    /* JavaScript should handle focus trapping */
+}
+
+/* Keyboard navigation */
+.modal {
+    /* Ensure modal can receive focus */
+    outline: none;
+}
+
+/* Screen reader announcements */
+.modal[role="dialog"] {
+    /* Proper ARIA attributes should be set via JavaScript */
+}
+
+/* ========================================
+   HIGH CONTRAST MODE SUPPORT
+   ======================================== */
+
+@media (prefers-contrast: high) {
+    .modal {
+        border-width: 3px;
+    }
+    
+    .modal-backdrop {
+        background: rgba(0, 0, 0, 0.9);
+    }
+    
+    .modal-close {
+        border: 1px solid var(--border-color);
+    }
+    
+    .modal-close:hover {
+        border-color: var(--primary-color);
+    }
+}
+
+/* ========================================
+   REDUCED MOTION SUPPORT
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .modal-backdrop {
+        transition: none;
+    }
+    
+    .modal {
+        transition: none;
+        transform: none;
+    }
+    
+    .modal-backdrop.active .modal {
+        transform: none;
+    }
+    
+    .modal-fade-in,
+    .modal-slide-up,
+    .modal-zoom {
+        animation: none;
+    }
+    
+    .loading-spinner {
+        animation: none;
+        border: 4px solid var(--primary-color);
+    }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+    .modal-backdrop,
+    .modal {
+        display: none !important;
+    }
+}

@@ -1,0 +1,592 @@
+/* Navigation Component System */
+/* Sidebar navigation, mobile menu, and navigation states */
+
+/* ========================================
+   SIDEBAR NAVIGATION
+   ======================================== */
+
+.sidebar {
+    width: var(--sidebar-width);
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    border-right: 1px solid var(--border-color);
+    padding: var(--space-lg);
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: var(--z-fixed);
+    transition: transform var(--transition-base);
+    display: flex;
+    flex-direction: column;
+    left: 0;
+    top: 0;
+}
+
+/* ========================================
+   APP LOGO / BRANDING
+   ======================================== */
+
+.app-logo {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+    padding: var(--space-lg) 0;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.app-logo h1 {
+    font-size: var(--font-size-xxl);
+    background: linear-gradient(45deg, var(--secondary-color), var(--primary-color), var(--accent-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--space-xs);
+    font-weight: var(--font-weight-bold);
+}
+
+.app-logo p {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ========================================
+   NAVIGATION MENU
+   ======================================== */
+
+.nav-menu {
+    list-style: none;
+    flex: 1;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-item {
+    margin-bottom: var(--space-xs);
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: var(--nav-item-border-radius);
+    transition: var(--transition-base);
+    font-weight: var(--font-weight-medium);
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background: rgba(78, 205, 196, 0.1);
+    color: var(--primary-color);
+    transform: var(--nav-item-hover-transform);
+    box-shadow: 0 2px 8px rgba(78, 205, 196, 0.2);
+}
+
+.nav-link.active {
+    background: rgba(78, 205, 196, 0.15);
+    font-weight: var(--font-weight-semibold);
+}
+
+.nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--primary-color);
+}
+
+/* ========================================
+   NAVIGATION ICONS
+   ======================================== */
+
+.nav-link .icon {
+    margin-right: var(--space-sm);
+    font-size: var(--font-size-lg);
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* ========================================
+   NAVIGATION BADGES
+   ======================================== */
+
+.nav-badge {
+    background: var(--secondary-color);
+    color: white;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: auto;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    animation: pulse 2s infinite;
+}
+
+.nav-badge.success {
+    background: var(--success-color);
+}
+
+.nav-badge.warning {
+    background: var(--warning-color);
+}
+
+.nav-badge.info {
+    background: var(--accent-color);
+}
+
+/* ========================================
+   LEARNING PROGRESS IN SIDEBAR
+   ======================================== */
+
+.learning-progress-sidebar {
+    background: var(--card-bg);
+    padding: var(--space-md);
+    border-radius: var(--border-radius);
+    border: 2px solid var(--success-color);
+    backdrop-filter: var(--card-backdrop-filter);
+    margin-bottom: var(--space-xl);
+    text-align: center;
+}
+
+.learning-progress-sidebar .progress-title {
+    font-weight: var(--font-weight-bold);
+    color: var(--success-color);
+    margin-bottom: var(--space-xs);
+    font-size: var(--font-size-sm);
+}
+
+.learning-progress-sidebar .progress-stats {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-sm);
+}
+
+.learning-progress-sidebar .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: var(--space-xs);
+}
+
+.learning-progress-sidebar .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success-color), var(--primary-color));
+    border-radius: 4px;
+    transition: width var(--transition-slow);
+}
+
+.learning-level {
+    font-size: var(--font-size-xs);
+    padding: 2px 6px;
+    border-radius: 8px;
+    background: var(--success-color);
+    color: white;
+    display: inline-block;
+    font-weight: var(--font-weight-semibold);
+}
+
+/* ========================================
+   COMPACT PROGRESS (Mobile Headers)
+   ======================================== */
+
+.learning-progress-compact {
+    display: none;
+    align-items: center;
+    gap: var(--space-xs);
+    background: rgba(78, 205, 196, 0.2);
+    padding: 4px var(--space-xs);
+    border-radius: 12px;
+    font-size: var(--font-size-xs);
+    border: 1px solid var(--primary-color);
+    font-weight: var(--font-weight-medium);
+}
+
+.learning-progress-compact .progress-bar {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.learning-progress-compact .progress-fill {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 2px;
+    transition: width var(--transition-slow);
+}
+
+/* ========================================
+   MOBILE NAVIGATION TOGGLE
+   ======================================== */
+
+.mobile-toggle {
+    display: none; /* Hidden by default on desktop */
+    position: fixed;
+    top: var(--space-lg);
+    left: var(--space-lg);
+    z-index: calc(var(--z-fixed) + 1);
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: var(--space-sm);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: var(--font-size-lg);
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: var(--transition-base);
+}
+
+.mobile-toggle:hover {
+    background: var(--accent-color);
+    transform: scale(1.05);
+}
+
+.mobile-toggle:active {
+    transform: scale(0.95);
+    transition: var(--transition-fast);
+}
+
+/* ========================================
+   NAVIGATION STATES
+   ======================================== */
+
+/* Loading state for navigation */
+.nav-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.nav-loading .nav-link {
+    position: relative;
+}
+
+.nav-loading .nav-link::after {
+    content: '';
+    position: absolute;
+    right: var(--space-sm);
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--primary-color);
+    border-right: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* Disabled navigation items */
+.nav-link.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Navigation item with notification dot */
+.nav-link.has-notification::after {
+    content: '';
+    position: absolute;
+    top: var(--space-xs);
+    right: var(--space-xs);
+    width: 8px;
+    height: 8px;
+    background: var(--danger-color);
+    border-radius: 50%;
+    border: 2px solid var(--dark-bg);
+}
+
+/* ========================================
+   NAVIGATION ANIMATIONS
+   ======================================== */
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Navigation slide in animation */
+.nav-item {
+    animation: navSlideIn 0.3s ease-out;
+    animation-fill-mode: both;
+}
+
+.nav-item:nth-child(1) { animation-delay: 0.1s; }
+.nav-item:nth-child(2) { animation-delay: 0.2s; }
+.nav-item:nth-child(3) { animation-delay: 0.3s; }
+.nav-item:nth-child(4) { animation-delay: 0.4s; }
+.nav-item:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes navSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ========================================
+   SCROLLBAR STYLING FOR SIDEBAR
+   ======================================== */
+
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 3px;
+    transition: var(--transition-base);
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color);
+}
+
+/* ========================================
+   DESKTOP SPECIFIC STYLES
+   ======================================== */
+
+@media (min-width: 769px) {
+    .mobile-toggle {
+        display: none !important; /* Force hide on desktop */
+    }
+    
+    .sidebar {
+        transform: translateX(0); /* Always visible on desktop */
+    }
+    
+    .learning-progress-sidebar {
+        display: block; /* Show full progress on desktop */
+    }
+    
+    .learning-progress-compact {
+        display: none; /* Hide compact progress on desktop */
+    }
+}
+
+/* ========================================
+   MOBILE RESPONSIVE NAVIGATION
+   ======================================== */
+
+@media (max-width: 768px) {
+    .mobile-toggle {
+        display: flex !important; /* Show on mobile */
+    }
+    
+    .sidebar {
+        transform: translateX(-100%);
+        z-index: var(--z-modal);
+    }
+    
+    .sidebar.mobile-visible {
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .learning-progress-sidebar {
+        display: none;
+    }
+    
+    .learning-progress-compact {
+        display: inline-flex;
+    }
+    
+    .app-logo h1 {
+        font-size: var(--font-size-xl);
+    }
+    
+    .nav-link {
+        padding: var(--space-md);
+        font-size: var(--font-size-base);
+    }
+    
+    .nav-link .icon {
+        font-size: var(--font-size-xl);
+        margin-right: var(--space-md);
+    }
+    
+    /* Mobile navigation overlay */
+    .sidebar.mobile-visible::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: var(--sidebar-width);
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+    }
+}
+
+@media (max-width: 480px) {
+    .mobile-toggle {
+        top: var(--space-md);
+        left: var(--space-md);
+        width: 40px;
+        height: 40px;
+        font-size: var(--font-size-base);
+    }
+    
+    .sidebar {
+        width: 280px;
+        padding: var(--space-md);
+    }
+    
+    .app-logo {
+        padding: var(--space-md) 0;
+        margin-bottom: var(--space-lg);
+    }
+    
+    .app-logo h1 {
+        font-size: var(--font-size-lg);
+    }
+    
+    .nav-link {
+        padding: var(--space-sm) var(--space-md);
+    }
+}
+
+/* ========================================
+   NAVIGATION ACCESSIBILITY
+   ======================================== */
+
+/* Focus states for keyboard navigation */
+.nav-link:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.mobile-toggle:focus {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+
+/* Screen reader only content */
+.nav-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Skip navigation link */
+.skip-nav {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: var(--primary-color);
+    color: white;
+    padding: 8px;
+    border-radius: 4px;
+    text-decoration: none;
+    z-index: var(--z-toast);
+    transition: top var(--transition-base);
+}
+
+.skip-nav:focus {
+    top: 6px;
+}
+
+/* ========================================
+   HIGH CONTRAST MODE SUPPORT
+   ======================================== */
+
+@media (prefers-contrast: high) {
+    .sidebar {
+        border-right-width: 2px;
+    }
+    
+    .nav-link {
+        border: 1px solid transparent;
+    }
+    
+    .nav-link:hover,
+    .nav-link.active {
+        border-color: var(--primary-color);
+    }
+    
+    .app-logo {
+        border-bottom-width: 3px;
+    }
+    
+    .learning-progress-sidebar {
+        border-width: 3px;
+    }
+}
+
+/* ========================================
+   REDUCED MOTION SUPPORT
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-link {
+        transition: none;
+        transform: none;
+    }
+    
+    .nav-link:hover {
+        transform: none;
+    }
+    
+    .sidebar {
+        transition: none;
+    }
+    
+    .mobile-toggle {
+        transition: none;
+    }
+    
+    .mobile-toggle:hover {
+        transform: none;
+    }
+    
+    .nav-item {
+        animation: none;
+    }
+    
+    .nav-badge {
+        animation: none;
+    }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+    .sidebar,
+    .mobile-toggle,
+    .learning-progress-sidebar,
+    .learning-progress-compact {
+        display: none !important;
+    }
+}

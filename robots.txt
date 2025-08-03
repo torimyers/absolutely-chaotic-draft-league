@@ -1,0 +1,10 @@
+# Robots.txt for texasperfect.win
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /config/
+Disallow: /.git/
+
+# Sitemap location
+Sitemap: https://texasperfect.win/sitemap.xml

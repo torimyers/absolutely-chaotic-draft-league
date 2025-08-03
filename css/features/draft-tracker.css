@@ -1,0 +1,686 @@
+/* ========================================
+   DRAFT TRACKER - Main Components
+   ======================================== */
+
+/* Draft Board Layout */
+.draft-board {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-sm);
+    margin: var(--space-md) 0;
+    padding: var(--space-md);
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.draft-round {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--border-radius-sm);
+    padding: var(--space-sm);
+    border: 1px solid var(--border-color);
+}
+
+.round-header {
+    text-align: center;
+    padding: var(--space-xs) 0;
+    margin-bottom: var(--space-sm);
+    font-weight: bold;
+    color: var(--accent-color);
+    border-bottom: 2px solid var(--accent-color);
+    font-size: 0.9em;
+}
+
+/* Draft Pick Styles */
+.draft-pick {
+    padding: var(--space-sm);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--border-radius-sm);
+    border-left: 4px solid var(--accent-color);
+    margin-bottom: var(--space-xs);
+    transition: all var(--transition-base);
+    position: relative;
+}
+
+.draft-pick:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(3px);
+    border-left-color: var(--primary-color);
+}
+
+.draft-pick.my-pick {
+    border-left-color: var(--success-color);
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.draft-pick.current-pick {
+    border-left-color: var(--warning-color);
+    background: rgba(243, 156, 18, 0.1);
+    animation: currentPickPulse 2s infinite;
+}
+
+.draft-pick.upcoming-pick {
+    border-left-color: var(--secondary-color);
+    background: rgba(255, 107, 107, 0.1);
+}
+
+@keyframes currentPickPulse {
+    0%, 100% { 
+        box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.4);
+        transform: translateX(0);
+    }
+    50% { 
+        box-shadow: 0 0 0 8px rgba(243, 156, 18, 0);
+        transform: translateX(3px);
+    }
+}
+
+.pick-number {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
+    font-weight: bold;
+}
+
+.pick-player {
+    font-weight: bold;
+    margin-bottom: 2px;
+    color: var(--text-primary);
+    font-size: 0.95em;
+}
+
+.pick-details {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
+}
+
+.pick-team {
+    font-weight: 500;
+    color: var(--accent-color);
+}
+
+.pick-position {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7em;
+    font-weight: bold;
+    margin-left: var(--space-xs);
+}
+
+/* Pick Analysis */
+.pick-analysis {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-top: var(--space-xs);
+    padding-top: var(--space-xs);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pick-grade {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.7em;
+    margin-right: var(--space-xs);
+}
+
+.pick-grade.A { 
+    background: var(--success-color); 
+    color: white; 
+}
+
+.pick-grade.B { 
+    background: var(--primary-color); 
+    color: white; 
+}
+
+.pick-grade.C { 
+    background: var(--warning-color); 
+    color: white; 
+}
+
+.pick-grade.D { 
+    background: var(--danger-color); 
+    color: white; 
+}
+
+.pick-grade.F { 
+    background: #8b0000; 
+    color: white; 
+}
+
+/* ========================================
+   PANIC MODE COMPONENTS
+   ======================================== */
+
+.panic-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-md);
+    animation: panicModeEntry 0.5s ease;
+}
+
+@keyframes panicModeEntry {
+    from { 
+        opacity: 0; 
+        backdrop-filter: blur(0px);
+    }
+    to { 
+        opacity: 1; 
+        backdrop-filter: blur(10px);
+    }
+}
+
+.panic-card {
+    background: var(--card-bg);
+    border: 3px solid var(--danger-color);
+    border-radius: var(--border-radius);
+    padding: var(--space-lg);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    animation: panicCardEntry 0.3s ease 0.2s both;
+}
+
+@keyframes panicCardEntry {
+    from { 
+        transform: scale(0.8) translateY(20px); 
+        opacity: 0;
+    }
+    to { 
+        transform: scale(1) translateY(0); 
+        opacity: 1;
+    }
+}
+
+.panic-header {
+    text-align: center;
+    margin-bottom: var(--space-md);
+    border-bottom: 2px solid var(--danger-color);
+    padding-bottom: var(--space-sm);
+}
+
+.panic-title {
+    font-size: 1.8em;
+    color: var(--danger-color);
+    margin-bottom: var(--space-xs);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+}
+
+.panic-title::before {
+    content: "🚨";
+    font-size: 1.2em;
+    animation: panicPulse 1s infinite;
+}
+
+@keyframes panicPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+.panic-timer {
+    font-size: 2em;
+    font-weight: bold;
+    color: var(--warning-color);
+    margin-bottom: var(--space-xs);
+}
+
+.panic-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.panic-recommendations {
+    margin-bottom: var(--space-md);
+}
+
+.panic-recommendation {
+    background: rgba(255, 107, 107, 0.1);
+    border: 2px solid var(--secondary-color);
+    border-radius: var(--border-radius-sm);
+    padding: var(--space-md);
+    margin-bottom: var(--space-sm);
+    transition: all var(--transition-base);
+}
+
+.panic-recommendation:hover {
+    background: rgba(255, 107, 107, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+.panic-recommendation.top-choice {
+    border-color: var(--success-color);
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.panic-recommendation.top-choice::before {
+    content: "⭐ TOP PICK";
+    display: block;
+    font-size: 0.7em;
+    font-weight: bold;
+    color: var(--success-color);
+    margin-bottom: var(--space-xs);
+}
+
+.panic-player-name {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: var(--space-xs);
+}
+
+.panic-quick-reason {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-sm);
+    font-style: italic;
+}
+
+.panic-actions {
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: center;
+    margin-top: var(--space-md);
+}
+
+.panic-draft-btn {
+    background: linear-gradient(45deg, var(--success-color), #27ae60);
+    color: white;
+    border: none;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--border-radius-sm);
+    font-weight: bold;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    font-size: 1.1em;
+}
+
+.panic-draft-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+}
+
+.panic-close-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 2px solid var(--border-color);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.panic-close-btn:hover {
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+
+/* ========================================
+   POSITION SCARCITY ALERTS
+   ======================================== */
+
+.position-scarcity {
+    background: linear-gradient(135deg, rgba(243, 156, 18, 0.1), rgba(230, 126, 34, 0.1));
+    border: 2px solid var(--warning-color);
+    border-radius: var(--border-radius);
+    padding: var(--space-md);
+    margin: var(--space-sm) 0;
+    position: relative;
+}
+
+.position-scarcity::before {
+    content: "⚠️";
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    font-size: 1.5em;
+    animation: scarcityPulse 2s infinite;
+}
+
+@keyframes scarcityPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.scarcity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-sm);
+}
+
+.scarcity-position {
+    font-weight: bold;
+    font-size: 1.2em;
+    color: var(--warning-color);
+}
+
+.scarcity-urgency {
+    font-size: 0.8em;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: var(--danger-color);
+    color: white;
+}
+
+.scarcity-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.scarcity-stat {
+    text-align: center;
+    padding: var(--space-xs);
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius-sm);
+}
+
+.scarcity-stat-value {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: var(--warning-color);
+}
+
+.scarcity-stat-label {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.scarcity-advice {
+    font-style: italic;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ========================================
+   LIVE DRAFT FEED
+   ======================================== */
+
+.draft-feed {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    max-height: 400px;
+    overflow-y: auto;
+    margin: var(--space-md) 0;
+}
+
+.feed-header {
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-color);
+    font-weight: bold;
+    color: var(--primary-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.feed-item {
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all var(--transition-base);
+    animation: feedItemEntry 0.3s ease;
+}
+
+@keyframes feedItemEntry {
+    from { 
+        opacity: 0; 
+        transform: translateX(-20px);
+    }
+    to { 
+        opacity: 1; 
+        transform: translateX(0);
+    }
+}
+
+.feed-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.feed-item.recent {
+    border-left: 4px solid var(--success-color);
+    background: rgba(46, 204, 113, 0.05);
+}
+
+.feed-timestamp {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    float: right;
+}
+
+.feed-content {
+    margin-bottom: var(--space-xs);
+}
+
+.feed-player {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.feed-team {
+    color: var(--accent-color);
+    font-weight: 500;
+}
+
+.feed-analysis {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-top: var(--space-xs);
+}
+
+/* Custom scrollbar for draft feed */
+.draft-feed::-webkit-scrollbar {
+    width: 6px;
+}
+
+.draft-feed::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.draft-feed::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+    border-radius: 3px;
+}
+
+.draft-feed::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+}
+
+/* ========================================
+   DRAFT STRATEGY TIPS
+   ======================================== */
+
+.draft-strategy-tip {
+    background: rgba(69, 183, 209, 0.1);
+    border: 1px solid var(--accent-color);
+    border-radius: var(--border-radius);
+    padding: var(--space-md);
+    margin: var(--space-sm) 0;
+    position: relative;
+}
+
+.draft-strategy-tip::before {
+    content: "💡";
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    font-size: 1.2em;
+}
+
+.strategy-tip-title {
+    font-weight: bold;
+    color: var(--accent-color);
+    margin-bottom: var(--space-xs);
+}
+
+.strategy-tip-content {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.strategy-timing {
+    margin-top: var(--space-sm);
+    padding: var(--space-xs);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.85em;
+    text-align: center;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+    .draft-board {
+        grid-template-columns: 1fr;
+        padding: var(--space-sm);
+        gap: var(--space-xs);
+    }
+    
+    .panic-card {
+        padding: var(--space-md);
+        margin: var(--space-sm);
+    }
+    
+    .panic-title {
+        font-size: 1.5em;
+    }
+    
+    .panic-timer {
+        font-size: 1.5em;
+    }
+    
+    .panic-actions {
+        flex-direction: column;
+    }
+    
+    .scarcity-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .position-scarcity {
+        padding: var(--space-sm);
+    }
+    
+    .draft-feed {
+        max-height: 300px;
+    }
+    
+    .feed-timestamp {
+        float: none;
+        display: block;
+        margin-top: var(--space-xs);
+    }
+}
+
+@media (max-width: 480px) {
+    .draft-pick {
+        padding: var(--space-xs);
+    }
+    
+    .pick-number {
+        font-size: 0.7em;
+    }
+    
+    .pick-player {
+        font-size: 0.9em;
+    }
+    
+    .panic-card {
+        padding: var(--space-sm);
+    }
+    
+    .scarcity-stats {
+        grid-template-columns: 1fr;
+        gap: var(--space-xs);
+    }
+    
+    .draft-strategy-tip {
+        padding: var(--space-sm);
+    }
+}
+
+/* ========================================
+   ACCESSIBILITY & PRINT
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .draft-pick.current-pick,
+    .panic-title::before,
+    .position-scarcity::before {
+        animation: none;
+    }
+    
+    .feed-item {
+        animation: none;
+    }
+}
+
+@media print {
+    .panic-mode {
+        display: none !important;
+    }
+    
+    .draft-board,
+    .draft-feed,
+    .position-scarcity,
+    .draft-strategy-tip {
+        background: white !important;
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+    }
+    
+    .draft-pick {
+        border-left: 2px solid #000 !important;
+        background: white !important;
+    }
+    
+    .pick-grade {
+        background: #ddd !important;
+        color: #000 !important;
+    }
+}
+
+@media (prefers-contrast: high) {
+    .draft-pick {
+        border-left-width: 6px;
+    }
+    
+    .panic-card {
+        border-width: 4px;
+    }
+    
+    .position-scarcity {
+        border-width: 3px;
+    }
+}

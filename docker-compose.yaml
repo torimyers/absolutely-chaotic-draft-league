@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  fantasy-football-app:
+    build: .
+    container_name: absolutely-chaotic-draft-league
+    ports:
+      - "8080:80"
+    environment:
+      # League Information
+      - FANTASY_LEAGUE_NAME=Absolutely Chaotic Draft League
+      - FANTASY_TEAM_NAME=Show Me Your TDs
+      - FANTASY_LEAGUE_SIZE=12
+      - FANTASY_SCORING_FORMAT=Half PPR
+      
+      # Season Stats (update these as season progresses)
+      - FANTASY_TEAM_RECORD=8-5
+      - FANTASY_TOTAL_POINTS=1847
+      - FANTASY_LEAGUE_RANKING=3
+      - FANTASY_PLAYOFF_ODDS=87
+      
+      # App Settings
+      - SLEEPER_LEAGUE_ID=1251955408977788928
+      - FANTASY_LEARNING_MODE=beginner
+      - FANTASY_THEME_COLOR=teal
+      
+      # Nginx Configuration
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    
+    volumes:
+      # Optional: Mount config directory for persistent settings
+      - ./config:/app/config
+      # Optional: Mount logs directory
+      - ./logs:/var/log/nginx
+    
+    restart: unless-stopped
+    
+    labels:
+      # Unraid template labels
+      - "net.unraid.docker.managed=composeman"
+      - "net.unraid.docker.icon=https://raw.githubusercontent.com/torimyers/absolutely-chaotic-draft-league/main/docs/images/icon.png"
+      - "net.unraid.docker.webui=http://[IP]:[PORT:8080]"
+      
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  default:
+    name: fantasy-league-network
+
+# Optional: Add volumes for persistent data
+volumes:
+  app-config:
+    driver: local
+  app-logs:
+    driver: local

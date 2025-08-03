@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="app-title">Fantasy Football Command Center</title>
+    
+    <!-- Environment variables via meta tags (for production deployment) -->
+    <meta name="FANTASY_LEAGUE_NAME" content="">
+    <meta name="FANTASY_TEAM_NAME" content="">
+    <meta name="FANTASY_LEAGUE_SIZE" content="12">
+    <meta name="FANTASY_SCORING_FORMAT" content="Half PPR">
+    <meta name="FANTASY_TEAM_RECORD" content="0-0">
+    <meta name="FANTASY_TOTAL_POINTS" content="0">
+    <meta name="FANTASY_LEAGUE_RANKING" content="1">
+    <meta name="FANTASY_PLAYOFF_ODDS" content="50">
+    <meta name="SLEEPER_LEAGUE_ID" content="">
+    <meta name="FANTASY_LEARNING_MODE" content="beginner">
+    <meta name="FANTASY_THEME_COLOR" content="teal">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#4ecdc4">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-theme="teal">
+    <!-- Configuration Panel -->
+    <div class="config-panel" id="configPanel">
+        <div class="config-card">
+            <h2 class="config-title">🏈 Welcome to Fantasy Football Command Center</h2>
+            
+            <div style="text-align: center; margin-bottom: 25px;">
+                <div style="font-size: 3em; margin-bottom: 15px;">🎯</div>
+                <p style="color: var(--text-secondary); line-height: 1.6;">
+                    Let's set up your league information to get started with personalized insights and AI recommendations.
+                </p>
+            </div>
+            
+            <div class="config-section">
+                <h3>🚀 Auto-Fill with Sleeper</h3>
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <p style="color: var(--text-secondary); font-size: 0.9em;">
+                        Have a Sleeper league? We can automatically fill out all the fields below for you!
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Sleeper League ID</label>
+                    <input type="text" class="form-input" id="sleeperLeagueId" placeholder="Enter your Sleeper League ID">
+                    <div class="example-text">Your Sleeper League ID for automatic league detection</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Sleeper Username (Optional)</label>
+                    <input type="text" class="form-input" id="sleeperUserName" placeholder="Your Sleeper User ID for auto-detection">
+                    <div class="example-text">Find this in your Sleeper profile settings - enables automatic team detection</div>
+                </div>
+                <button type="button" class="btn btn-secondary" data-action="fetch-sleeper-data" id="fetchSleeperBtn" style="margin-top: 10px; width: 100%;">
+                    <span>🔗</span> Auto-Fill All Fields from Sleeper
+                </button>
+                <div id="sleeperStatus" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;"></div>
+            </div>
+
+            <div class="config-section">
+                <h3>🏆 Or Fill Manually</h3>
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <p style="color: var(--text-secondary); font-size: 0.9em;">
+                        Don't have Sleeper or prefer to enter manually? No problem!
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">League Name</label>
+                    <input type="text" class="form-input" id="leagueName" placeholder="My Fantasy League">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Team Name</label>
+                    <input type="text" class="form-input" id="teamName" placeholder="My Team">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">League Size</label>
+                    <select class="form-select" id="leagueSize">
+                        <option value="8">8 Teams</option>
+                        <option value="10">10 Teams</option>
+                        <option value="12" selected>12 Teams</option>
+                        <option value="14">14 Teams</option>
+                        <option value="16">16 Teams</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Scoring Format</label>
+                    <select class="form-select" id="scoringFormat">
+                        <option value="Standard">Standard (No PPR)</option>
+                        <option value="Half PPR" selected>Half PPR (0.5 per catch)</option>
+                        <option value="PPR">Full PPR (1 per catch)</option>
+                        <option value="Super Flex">Super Flex</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" data-action="save-configuration">
+                    <span>🚀</span> Start Using App
+                </button>
+                <button class="btn btn-secondary" data-action="skip-configuration">
+                    <span>⏭️</span> Skip for Now
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Main App -->
+    <div class="app-container">
+        <button class="mobile-toggle" id="mobileToggle" data-action="toggle-mobile-menu">☰</button>
+        <button class="config-button" data-action="show-configuration" title="Configure App">⚙️</button>
+
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="app-logo">
+                <h1 id="appLogoTitle">Fantasy Command Center</h1>
+                <p id="appLogoSubtitle">Your Learning Hub</p>
+            </div>
+
+            <!-- Learning Progress in Sidebar -->
+            <div class="learning-progress-sidebar" id="learningProgressSidebar">
+                <div class="progress-title">🎓 Learning Progress</div>
+                <div class="progress-stats">
+                    Concepts Learned: <span id="conceptsLearned">0</span>/25
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                </div>
+                <div class="learning-level">Beginner Level</div>
+            </div>
+
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#dashboard" class="nav-link active" data-page="dashboard" data-action="navigate-to-page">
+                        <span class="icon">📊</span>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#live-draft" class="nav-link" data-page="live-draft" data-action="navigate-to-page">
+                        <span class="icon">🔥</span>
+                        Live Draft
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#my-team" class="nav-link" data-page="my-team" data-action="navigate-to-page">
+                        <span class="icon">⭐</span>
+                        <span id="navTeamName">My Team</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#ai-insights" class="nav-link" data-page="ai-insights" data-action="navigate-to-page">
+                        <span class="icon">🤖</span>
+                        AI Insights
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#fantasy-academy" class="nav-link" data-page="fantasy-academy" data-action="navigate-to-page">
+                        <span class="icon">📚</span>
+                        Fantasy Academy
+                        <span class="nav-badge">LEARN</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="mainContent">
+            <!-- Dashboard Page -->
+            <div class="page-content active" id="dashboard">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Fantasy Dashboard</h1>
+                        <p class="card-subtitle" id="dashboardSubtitle">Configure your league to get started</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="learning-progress-compact">
+                            <span>🎓</span>
+                            <span id="compactConceptsLearned">0</span>/25
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="compactProgressFill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" data-action="show-configuration">
+                            <span>⚙️</span> Configure League
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Welcome Card for New Users -->
+                <div class="card">
+                    <div class="empty-state">
+                        <div class="icon">🏈</div>
+                        <h3>Welcome to Fantasy Football Command Center!</h3>
+                        <p>
+                            The educational fantasy platform that teaches you WHY behind every decision. 
+                            Get started by configuring your league information to unlock personalized insights and AI recommendations.
+                        </p>
+                        <button class="btn btn-primary" data-action="show-configuration" style="margin-top: 15px;">
+                            <span>⚙️</span> Set Up My League
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Feature Preview Cards -->
+                <div class="grid grid-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">🤖 AI-Powered Insights</h3>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🧠</div>
+                            <p style="color: var(--text-secondary);">
+                                Get AI recommendations with detailed explanations. Learn why each decision makes sense for your specific league format.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📚 Educational Focus</h3>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🎓</div>
+                            <p style="color: var(--text-secondary);">
+                                Learn 25+ fantasy concepts through interactive modules. Build long-term skills, not just weekly lineup help.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">🔥 Live Draft Help</h3>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">⚡</div>
+                            <p style="color: var(--text-secondary);">
+                                Real-time draft assistance with educational context. Panic Mode for emergency picks when you're on the clock.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Draft Page -->
+            <div class="page-content" id="live-draft">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">🔥 Live Draft Tracker</h1>
+                        <p class="card-subtitle">Real-time draft assistance with educational guidance</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="learning-progress-compact">
+                            <span>🎓</span>
+                            <span id="compactConceptsLearned2">0</span>/25
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="compactProgressFill2" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" data-action="connect-sleeper">
+                            <span>🔗</span> Connect Sleeper
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="empty-state">
+                        <div class="icon">🎯</div>
+                        <h3>Draft Features Coming Soon</h3>
+                        <p>
+                            Configure your league information and connect your Sleeper league ID to enable live draft tracking, 
+                            real-time pick analysis, and AI-powered recommendations.
+                        </p>
+                        <button class="btn btn-primary" data-action="show-configuration" style="margin-top: 15px;">
+                            <span>⚙️</span> Configure League
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Draft Features Preview -->
+                <div class="grid grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">🚨 Panic Mode</h3>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">⏰</div>
+                            <h4>Emergency Draft Help</h4>
+                            <p style="color: var(--text-secondary);">
+                                When it's your turn and you're not sure who to pick, Panic Mode gives you instant AI recommendations with explanations.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📊 Live Analysis</h3>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">📈</div>
+                            <h4>Real-time Insights</h4>
+                            <p style="color: var(--text-secondary);">
+                                AI evaluates every pick in real-time with educational context about why each selection makes sense.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- My Team Page -->
+            <div class="page-content" id="my-team">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title" id="myTeamPageTitle">My Team</h1>
+                        <p class="card-subtitle">Your roster with AI-powered insights</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="learning-progress-compact">
+                            <span>🎓</span>
+                            <span id="compactConceptsLearned3">0</span>/25
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="compactProgressFill3" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" data-action="show-configuration">
+                            <span>⚙️</span> Configure Team
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="empty-state">
+                        <div class="icon">⭐</div>
+                        <h3>Draft Your Team to Get Started</h3>
+                        <p>
+                            Your starting lineup, bench analysis, and weekly matchup insights will appear here after you've 
+                            completed your draft and configured your team information.
+                        </p>
+                        <button class="btn btn-primary" data-action="show-configuration" style="margin-top: 15px;">
+                            <span>⚙️</span> Set Up Team Info
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Team Features Preview -->
+                <div class="grid grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">⚡ Lineup Optimization</h3>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🎯</div>
+                            <h4>Weekly Lineup Help</h4>
+                            <p style="color: var(--text-secondary);">
+                                AI analyzes matchups, weather, and player trends to recommend your optimal weekly lineup with explanations.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📈 Matchup Analysis</h3>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🔍</div>
+                            <h4>Weekly Opponent Insights</h4>
+                            <p style="color: var(--text-secondary);">
+                                Get detailed breakdowns of your weekly matchup with win probability and key player advantages.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Insights Page -->
+            <div class="page-content" id="ai-insights">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">🤖 AI Insights</h1>
+                        <p class="card-subtitle">Advanced AI analysis with educational insights</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="learning-progress-compact">
+                            <span>🎓</span>
+                            <span id="compactConceptsLearned4">0</span>/25
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="compactProgressFill4" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" data-action="generate-insights">
+                            <span>✨</span> Generate Insights
+                        </button>
+                        <button class="btn btn-outline" data-action="run-streak-demo">
+                            <span>🔥</span> Demo Streak Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hot/Cold Streak Analysis Section -->
+                <div class="ai-insights-tabs">
+                    <div class="tab-navigation">
+                        <button class="tab-btn active" data-tab="streak-analysis">
+                            🔥 Hot/Cold Streaks
+                        </button>
+                        <button class="tab-btn" data-tab="weather-analysis">
+                            🌦️ Weather Impact
+                        </button>
+                        <button class="tab-btn" data-tab="predictive-analytics">
+                            📈 Predictions
+                        </button>
+                    </div>
+
+                    <!-- Streak Analysis Tab Content -->
+                    <div class="tab-content active" id="streak-analysis-tab">
+                        <div id="streak-analysis-container">
+                            <!-- Streak analysis will be rendered here -->
+                            <div class="streak-empty-state" id="streak-empty-state">
+                                <div class="icon">🔥</div>
+                                <h3>Hot/Cold Streak Analysis</h3>
+                                <p>
+                                    AI-powered streak detection analyzes recent player performance to identify 
+                                    hot streaks, cold streaks, and emerging trends with educational explanations.
+                                </p>
+                                <button class="btn btn-primary" data-action="run-streak-demo">
+                                    <span>🎯</span> See Demo Analysis
+                                </button>
+                                <button class="btn btn-outline" data-action="connect-sleeper">
+                                    <span>🔗</span> Connect Real Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weather Analysis Tab Content (Placeholder) -->
+                    <div class="tab-content" id="weather-analysis-tab">
+                        <div class="card">
+                            <div class="empty-state">
+                                <div class="icon">🌦️</div>
+                                <h3>Weather Impact Analysis</h3>
+                                <p>
+                                    Real-time weather analysis for game-day decisions. 
+                                    Coming soon in the next update!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Predictive Analytics Tab Content (Placeholder) -->
+                    <div class="tab-content" id="predictive-analytics-tab">
+                        <div class="card">
+                            <div class="empty-state">
+                                <div class="icon">📈</div>
+                                <h3>Predictive Analytics</h3>
+                                <p>
+                                    Breakout predictions, playoff probabilities, and championship odds. 
+                                    Coming soon in the next update!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Fantasy Academy Page -->
+            <div class="page-content" id="fantasy-academy">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">📚 Fantasy Academy</h1>
+                        <p class="card-subtitle">Master fantasy football concepts</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="learning-progress-compact">
+                            <span>🎓</span>
+                            <span id="compactConceptsLearned5">0</span>/25
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="compactProgressFill5" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" data-action="start-learning-module">
+                            <span>🎓</span> Start Learning
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Learning Module Introduction -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🎯 Start Your Fantasy Education Journey</h3>
+                    </div>
+                    <div style="background: rgba(69, 183, 209, 0.1); border-left: 4px solid var(--accent-color); padding: 20px; margin-bottom: 15px;">
+                        <h4 style="color: var(--accent-color); margin-bottom: 10px;">💡 Learn While You Play</h4>
+                        <p style="margin-bottom: 15px;">
+                            Fantasy Academy teaches you the <strong>WHY</strong> behind every decision. Instead of just following advice, 
+                            you'll understand the reasoning and become a better fantasy player long-term.
+                        </p>
+                        
+                        <div class="learning-tip">
+                            💡 <strong>Educational Philosophy:</strong> Every recommendation includes detailed explanations. 
+                            Click on any concept, stat, or player analysis to learn more about the underlying strategy.
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <button class="btn btn-primary" data-action="start-learning-module">
+                            <span>🚀</span> Begin Learning Journey
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Learning Module Categories -->
+                <div class="grid grid-3">
+                    <div class="card" style="border: 2px solid var(--accent-color);">
+                        <div class="card-header">
+                            <h3 class="card-title">🏈 Fantasy Basics</h3>
+                            <span class="nav-badge" style="background: var(--accent-color);">Start Here</span>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">📋</div>
+                            <p>Positions, scoring systems, and fundamental concepts</p>
+                            <div style="margin-top: 15px; color: var(--text-secondary); text-align: left;">
+                                📖 Scoring Systems<br>
+                                📊 Player Positions<br>
+                                🏆 League Formats<br>
+                                💰 Waiver Wire Basics
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="border: 2px solid var(--border-color); opacity: 0.7;">
+                        <div class="card-header">
+                            <h3 class="card-title">📋 Draft Strategy</h3>
+                            <span class="nav-badge">Locked</span>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🎯</div>
+                            <p>Master draft tactics and positional values</p>
+                            <div style="margin-top: 15px; color: var(--text-secondary); text-align: left;">
+                                🔒 Value-Based Drafting<br>
+                                🔒 Position Scarcity<br>
+                                🔒 ADP Analysis<br>
+                                🔒 Handcuff Strategy
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="border: 2px solid var(--border-color); opacity: 0.7;">
+                        <div class="card-header">
+                            <h3 class="card-title">📊 Advanced Analytics</h3>
+                            <span class="nav-badge">Locked</span>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🔍</div>
+                            <p>Understand efficiency metrics and advanced stats</p>
+                            <div style="margin-top: 15px; color: var(--text-secondary); text-align: left;">
+                                🔒 Target Share<br>
+                                🔒 Air Yards<br>
+                                🔒 Red Zone Usage<br>
+                                🔒 Snap Count Analysis
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sample Learning Module -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📖 Sample Module: Understanding Scoring Systems</h3>
+                    </div>
+                    <div style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                        <h4 style="color: var(--primary-color); margin-bottom: 10px;">🎯 Key Concept: PPR vs Standard Scoring</h4>
+                        <p style="margin-bottom: 15px;">
+                            The scoring system dramatically affects player values. In PPR (Points Per Reception), pass-catching players 
+                            get bonus points for every catch, making them more valuable than in Standard scoring.
+                        </p>
+                        
+                        <div style="background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <h5 style="margin-bottom: 10px;">Example Impact:</h5>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <strong>Standard Scoring:</strong><br>
+                                    RBs more valuable<br>
+                                    Big-play WRs preferred<br>
+                                    TEs have less value
+                                </div>
+                                <div>
+                                    <strong>PPR Scoring:</strong><br>
+                                    Pass-catching RBs valuable<br>
+                                    Slot WRs get boost<br>
+                                    Elite TEs become crucial
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="learning-tip">
+                            💡 <strong>Draft Strategy:</strong> In PPR, target players with high reception totals earlier. 
+                            A WR with 100 catches adds 100 points compared to Standard scoring!
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <button class="btn btn-primary" data-action="complete-module">
+                            <span>✅</span> Complete Module
+                        </button>
+                        <button class="btn btn-secondary" data-action="start-learning-module">
+                            <span>📚</span> Explore More Modules
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Core JavaScript -->
+    <script src="js/core/config-manager.js"></script>
+    <script src="js/core/navigation-manager.js"></script>
+    <script src="js/core/learning-manager.js"></script>
+    <script src="js/core/event-manager.js"></script>
+
+    <!-- Feature JavaScript -->
+    <script src="js/features/draft-tracker.js"></script>
+    <script src="js/features/streak-analyzer.js"></script>
+
+    <!-- Main App -->
+    <script src="js/app.js"></script>
+
+    <!-- Development helpers (remove in production) -->
+    <script>
+        // Make getAppStatus available globally for debugging
+        window.addEventListener('load', () => {
+            // Add development helpers to console
+            console.log('%c🔧 Development Mode Active', 'color: #f39c12; font-weight: bold;');
+            console.log('%cType getAppStatus() to check system status', 'color: #3498db;');
+            console.log('%cType eventManager.getEventStatus() for event system details', 'color: #3498db;');
+            
+            // Performance logging
+            if (window.performance && performance.getEntriesByType) {
+                const navigation = performance.getEntriesByType('navigation')[0];
+                if (navigation) {
+                    console.log(`⚡ Page Load Time: ${Math.round(navigation.loadEventEnd - navigation.fetchStart)}ms`);
+                }
+            }
+        });
+
+        // Global error logging for development
+        window.addEventListener('error', (e) => {
+            console.group('🚨 JavaScript Error');
+            console.error('Message:', e.message);
+            console.error('File:', e.filename);
+            console.error('Line:', e.lineno, 'Column:', e.colno);
+            console.error('Stack:', e.error?.stack);
+            console.groupEnd();
+        });
+
+        // Unhandled promise rejection logging
+        window.addEventListener('unhandledrejection', (e) => {
+            console.group('🚨 Unhandled Promise Rejection');
+            console.error('Reason:', e.reason);
+            console.error('Promise:', e.promise);
+            console.groupEnd();
+        });
+    </script>
+</body>
+</html>

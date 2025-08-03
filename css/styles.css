@@ -1,0 +1,32 @@
+/* Fantasy Football Command Center - Main CSS Import File */
+/* Modular architecture for maintainable, scalable styles */
+
+/* CORE FOUNDATION - Load first for CSS custom properties and base styles */
+@import 'core/variables.css';
+@import 'core/reset.css';
+@import 'core/base.css';
+@import 'core/layout.css';
+
+/* REUSABLE COMPONENTS - UI building blocks used across features */
+@import 'components/buttons.css';
+@import 'components/cards.css';
+@import 'components/forms.css';
+@import 'components/navigation.css';
+@import 'components/modals.css';
+@import 'components/notifications.css';
+
+/* FEATURE-SPECIFIC STYLES - Organized by app functionality */
+@import 'features/dashboard.css';
+@import 'features/configuration.css';
+@import 'features/draft-tracker.css';
+@import 'features/learning-academy.css';
+@import 'features/team-management.css';
+@import 'features/ai-insights.css';
+@import 'features/streak-analysis.css';
+
+/* UTILITY CLASSES - Helpers and overrides (load last for highest specificity) */
+@import 'utilities/spacing.css';
+@import 'utilities/typography.css';
+@import 'utilities/responsive.css';
+@import 'utilities/accessibility.css';
+@import 'utilities/print.css';

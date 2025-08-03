@@ -1,0 +1,500 @@
+/* Card Component System */
+/* Flexible card containers with consistent styling and variants */
+
+/* ========================================
+   BASE CARD STYLES
+   ======================================== */
+.card {
+    /* Layout */
+    display: block;
+    
+    /* Spacing */
+    padding: var(--card-padding);
+    margin-bottom: var(--space-lg);
+    
+    /* Appearance */
+    background: var(--card-bg);
+    border: var(--card-border);
+    border-radius: var(--card-border-radius);
+    backdrop-filter: var(--card-backdrop-filter);
+    
+    /* Interaction */
+    transition: var(--transition-base);
+}
+
+.card:hover {
+    transform: var(--card-hover-transform);
+    border-color: var(--primary-color);
+}
+
+/* ========================================
+   CARD HEADER
+   ======================================== */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-sm);
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.card-title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--primary-color);
+    margin: 0;
+}
+
+.card-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin: var(--space-xs) 0 0 0;
+}
+
+.card-actions {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+}
+
+/* ========================================
+   CARD BODY
+   ======================================== */
+.card-body {
+    flex: 1;
+}
+
+.card-text {
+    color: var(--text-secondary);
+    line-height: var(--line-height-relaxed);
+    margin-bottom: var(--space-md);
+}
+
+.card-text:last-child {
+    margin-bottom: 0;
+}
+
+/* ========================================
+   CARD FOOTER
+   ======================================== */
+.card-footer {
+    margin-top: var(--space-lg);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* ========================================
+   CARD VARIANTS
+   ======================================== */
+
+/* Primary Card - Highlighted content */
+.card-primary {
+    border-color: var(--primary-color);
+    background: rgba(78, 205, 196, 0.05);
+}
+
+.card-primary .card-title {
+    color: var(--primary-color);
+}
+
+/* Success Card - Positive content */
+.card-success {
+    border-color: var(--success-color);
+    background: rgba(46, 204, 113, 0.05);
+}
+
+.card-success .card-title {
+    color: var(--success-color);
+}
+
+/* Warning Card - Cautionary content */
+.card-warning {
+    border-color: var(--warning-color);
+    background: rgba(243, 156, 18, 0.05);
+}
+
+.card-warning .card-title {
+    color: var(--warning-color);
+}
+
+/* Danger Card - Critical content */
+.card-danger {
+    border-color: var(--danger-color);
+    background: rgba(231, 76, 60, 0.05);
+}
+
+.card-danger .card-title {
+    color: var(--danger-color);
+}
+
+/* Accent Card - Secondary highlighting */
+.card-accent {
+    border-color: var(--accent-color);
+    background: rgba(69, 183, 209, 0.05);
+}
+
+.card-accent .card-title {
+    color: var(--accent-color);
+}
+
+/* ========================================
+   CARD SIZES
+   ======================================== */
+
+/* Compact Card */
+.card-compact {
+    padding: var(--space-md);
+}
+
+.card-compact .card-header {
+    margin-bottom: var(--space-sm);
+}
+
+.card-compact .card-title {
+    font-size: var(--font-size-lg);
+}
+
+/* Large Card */
+.card-large {
+    padding: var(--space-xl);
+}
+
+.card-large .card-header {
+    margin-bottom: var(--space-lg);
+}
+
+.card-large .card-title {
+    font-size: var(--font-size-xxl);
+}
+
+/* ========================================
+   SPECIAL CARD TYPES
+   ======================================== */
+
+/* Feature Card - Used for feature showcases */
+.feature-card {
+    text-align: center;
+    padding: var(--space-xxl) var(--space-lg);
+}
+
+.feature-icon {
+    font-size: 3em;
+    margin-bottom: var(--space-md);
+    display: block;
+}
+
+/* Metric Card - For displaying statistics */
+.metric-card {
+    text-align: center;
+    padding: var(--space-lg);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+}
+
+.metric-value {
+    font-size: var(--font-size-xxxl);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--space-xs);
+    color: var(--primary-color);
+}
+
+.metric-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Empty State Card */
+.empty-state {
+    text-align: center;
+    padding: var(--space-xxl) var(--space-lg);
+    color: var(--text-secondary);
+}
+
+.empty-state .icon {
+    font-size: 4em;
+    margin-bottom: var(--space-lg);
+    opacity: 0.7;
+    display: block;
+}
+
+.empty-state h3 {
+    color: var(--primary-color);
+    margin-bottom: var(--space-md);
+    font-size: var(--font-size-xl);
+}
+
+.empty-state p {
+    max-width: 400px;
+    margin: 0 auto var(--space-lg);
+    line-height: var(--line-height-relaxed);
+}
+
+/* Loading State Card */
+.loading {
+    text-align: center;
+    padding: var(--space-xxl) var(--space-lg);
+    color: var(--text-secondary);
+    font-size: var(--font-size-lg);
+}
+
+.loading::before {
+    content: "⏳ ";
+    font-size: 2em;
+    display: block;
+    margin-bottom: var(--space-lg);
+}
+
+/* ========================================
+   CARD INTERACTIONS
+   ======================================== */
+
+/* Clickable Card */
+.card-clickable {
+    cursor: pointer;
+    transition: var(--transition-base);
+}
+
+.card-clickable:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border-color: var(--primary-color);
+}
+
+.card-clickable:active {
+    transform: translateY(-2px);
+    transition: var(--transition-fast);
+}
+
+/* Selectable Card */
+.card-selectable {
+    cursor: pointer;
+    border: 2px solid var(--border-color);
+    transition: var(--transition-base);
+}
+
+.card-selectable:hover {
+    border-color: var(--accent-color);
+    background: rgba(69, 183, 209, 0.1);
+    transform: translateY(-2px);
+}
+
+.card-selectable.selected {
+    border-color: var(--success-color);
+    background: rgba(46, 204, 113, 0.1);
+    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+}
+
+.card-selectable.selected::before {
+    content: '✓';
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-md);
+    color: var(--success-color);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-lg);
+}
+
+/* ========================================
+   CARD LAYOUTS
+   ======================================== */
+
+/* Horizontal Card */
+.card-horizontal {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+}
+
+.card-horizontal .card-content {
+    flex: 1;
+}
+
+.card-horizontal .card-media {
+    flex: 0 0 auto;
+    width: 120px;
+    height: 120px;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+/* Grid Cards Container */
+.cards-grid {
+    display: grid;
+    gap: var(--grid-gap);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.cards-grid-2 {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.cards-grid-3 {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.cards-grid-4 {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* ========================================
+   CARD CONTENT ELEMENTS
+   ======================================== */
+
+/* Card Badge */
+.card-badge {
+    background: var(--secondary-color);
+    color: white;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Card Progress */
+.card-progress {
+    margin: var(--space-md) 0;
+}
+
+.card-progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--space-xs);
+    font-size: var(--font-size-sm);
+}
+
+.card-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.card-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success-color), var(--primary-color));
+    border-radius: 4px;
+    transition: width var(--transition-slow);
+}
+
+/* Card List */
+.card-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.card-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-list-item:last-child {
+    border-bottom: none;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+@media (max-width: 768px) {
+    .card {
+        padding: var(--space-md);
+        margin-bottom: var(--space-md);
+    }
+    
+    .card-header {
+        flex-direction: column;
+        gap: var(--space-sm);
+        text-align: center;
+        margin-bottom: var(--space-md);
+    }
+    
+    .card-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .card-horizontal {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .card-horizontal .card-media {
+        width: 100%;
+        height: 200px;
+    }
+    
+    .cards-grid,
+    .cards-grid-2,
+    .cards-grid-3,
+    .cards-grid-4 {
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
+    }
+    
+    .feature-card {
+        padding: var(--space-lg) var(--space-md);
+    }
+    
+    .empty-state {
+        padding: var(--space-xl) var(--space-md);
+    }
+    
+    .card-title {
+        font-size: var(--font-size-lg);
+    }
+    
+    .card-large .card-title {
+        font-size: var(--font-size-xl);
+    }
+}
+
+@media (max-width: 480px) {
+    .card {
+        padding: var(--space-sm);
+    }
+    
+    .card-large {
+        padding: var(--space-lg);
+    }
+    
+    .metric-value {
+        font-size: var(--font-size-xxl);
+    }
+    
+    .feature-icon {
+        font-size: 2.5em;
+    }
+    
+    .empty-state .icon {
+        font-size: 3em;
+    }
+}
+
+/* ========================================
+   HIGH CONTRAST MODE SUPPORT
+   ======================================== */
+@media (prefers-contrast: high) {
+    .card {
+        border-width: 2px;
+    }
+    
+    .card-primary,
+    .card-success,
+    .card-warning,
+    .card-danger,
+    .card-accent {
+        border-width: 3px;
+    }
+}
