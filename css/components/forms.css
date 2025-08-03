@@ -88,12 +88,21 @@
    SELECT CONTROLS
    ======================================== */
 .form-select {
+    /* Hide browser default dropdown arrow */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    
+    /* Add custom dropdown arrow */
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
     background-position: right var(--space-sm) center;
     background-repeat: no-repeat;
     background-size: 1.5em 1.5em;
     padding-right: var(--space-xl);
     cursor: pointer;
+    
+    /* Override transition to prevent arrow animation */
+    transition: border-color var(--transition-base), background-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .form-select option {

@@ -53,6 +53,7 @@ class EventManager {
             if (!action) return;
             
             e.preventDefault();
+            console.log('🔍 Click detected on element with action:', action);
             this.handleAction(action, actionElement, e); // Use actionElement, not e.target
         });
 
@@ -91,6 +92,9 @@ class EventManager {
                     break;
                 case 'reset-configuration':
                     this.resetConfiguration();
+                    break;
+                case 'setup-demo-mode':
+                    this.setupDemoMode();
                     break;
 
                 // Navigation Actions
@@ -190,6 +194,7 @@ class EventManager {
             teamName: this.getInputValue('teamName'),
             leagueSize: parseInt(this.getInputValue('leagueSize')) || 12,
             scoringFormat: this.getInputValue('scoringFormat'),
+            draftPosition: parseInt(this.getInputValue('draftPosition')) || 6,
             sleeperLeagueId: this.getInputValue('sleeperLeagueId'),
             // FIX: Get the correct input field name (sleeperUserName in HTML)
             sleeperUsername: this.getInputValue('sleeperUserName') || this.getInputValue('sleeperUsername')
@@ -226,6 +231,44 @@ class EventManager {
         }
 
         this.configManager.resetConfiguration();
+    }
+
+    setupDemoMode() {
+        if (!this.configManager) {
+            this.showNotification('❌ Configuration system not available', 'error');
+            return;
+        }
+
+        // Use a completed draft for demo
+        this.configManager.config.sleeperLeagueId = '984462448236797952'; // Known good league
+        this.configManager.config.leagueName = 'Demo Fantasy League';
+        this.configManager.config.teamName = 'Demo Team';
+        this.configManager.config.leagueSize = 12;
+        this.configManager.config.scoringFormat = 'Half PPR';
+        this.configManager.config.draftPosition = 6;
+        this.configManager.config.isConfigured = true;
+        this.configManager.config.isDemoMode = true;
+
+        // Update form
+        this.configManager.updateFormFields({
+            sleeperLeagueId: '984462448236797952',
+            leagueName: 'Demo Fantasy League',
+            teamName: 'Demo Team',
+            leagueSize: 12,
+            scoringFormat: 'Half PPR',
+            draftPosition: 6
+        });
+
+        this.configManager.applyConfiguration();
+        this.showNotification('🎮 Demo mode ready! Go to Live Draft to see completed picks with AI analysis.', 'success');
+        
+        // Auto-close config panel
+        setTimeout(() => {
+            const configPanel = document.getElementById('configPanel');
+            if (configPanel) {
+                configPanel.classList.add('hidden');
+            }
+        }, 2000);
     }
 
     // ======================
@@ -403,7 +446,10 @@ class EventManager {
 
     // Also fix the fetchSleeperData method to properly store references
     async fetchSleeperData() {
+        console.log('🔍 fetchSleeperData called');
+        
         if (!this.configManager) {
+            console.error('❌ ConfigManager not available');
             this.showNotification('❌ Configuration system not available', 'error');
             return;
         }
@@ -415,6 +461,7 @@ class EventManager {
         }
 
         try {
+            console.log('📞 Calling configManager.loadFromSleeper()');
             const success = await this.configManager.loadFromSleeper();
             
             if (success) {
@@ -715,6 +762,54 @@ class EventManager {
                 }
             }
         });
+
+        // Handle league size changes to update draft position options
+        document.addEventListener('change', (e) => {
+            if (e.target.id === 'leagueSize') {
+                this.updateDraftPositionOptions(parseInt(e.target.value));
+            }
+        });
+    }
+
+    updateDraftPositionOptions(leagueSize) {
+        const draftPositionSelect = document.getElementById('draftPosition');
+        if (!draftPositionSelect) return;
+
+        const currentValue = parseInt(draftPositionSelect.value);
+        
+        // Clear existing options
+        draftPositionSelect.innerHTML = '';
+        
+        // Add options for the current league size
+        for (let i = 1; i <= leagueSize; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = this.getOrdinalNumber(i) + ' Pick';
+            draftPositionSelect.appendChild(option);
+        }
+        
+        // Set the selected value (default to middle position or keep current if valid)
+        let newValue;
+        if (currentValue && currentValue <= leagueSize) {
+            newValue = currentValue;
+        } else {
+            // Default to middle position for new league size
+            newValue = Math.ceil(leagueSize / 2);
+        }
+        
+        draftPositionSelect.value = newValue;
+    }
+
+    getOrdinalNumber(num) {
+        const suffixes = ['th', 'st', 'nd', 'rd'];
+        const lastDigit = num % 10;
+        const lastTwoDigits = num % 100;
+        
+        if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+            return num + 'th';
+        }
+        
+        return num + (suffixes[lastDigit] || 'th');
     }
 
     // ======================

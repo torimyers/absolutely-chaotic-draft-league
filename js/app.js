@@ -35,11 +35,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Log event system status for debugging
                 console.log('📊 Event System Status:', eventManager.getEventStatus());
                 
+                // Make managers globally available for debugging
+                window.configManager = configManager;
+                window.navigationManager = navigationManager;
+                window.learningManager = learningManager;
+                window.draftTracker = draftTracker;
+                window.eventManager = eventManager;
+                
             } catch (error) {
                 console.error('❌ Error initializing features:', error);
                 showFallbackNotification('⚠️ Some features may not work correctly. Please refresh the page.', 'warning');
             }
-        }, 500);
+        }, 750);
         
     } catch (error) {
         console.error('❌ Critical error initializing core systems:', error);
@@ -94,11 +101,19 @@ window.addEventListener('unhandledrejection', (event) => {
 
 // Configuration functions
 function showConfiguration() {
-    console.warn('⚠️ showConfiguration() called directly - should use EventManager');
     if (eventManager) {
-        eventManager.handleAction('show-configuration');
+        eventManager.showConfiguration();
+    } else if (configManager) {
+        // Direct fallback if EventManager isn't ready
+        configManager.populateConfigForm();
+        const configPanel = document.getElementById('configPanel');
+        if (configPanel) {
+            configPanel.classList.remove('hidden');
+        }
     } else {
-        showFallbackNotification('❌ Configuration system not ready. Please wait a moment and try again.', 'error');
+        showFallbackNotification('⏳ App is still loading. Please wait a moment...', 'info');
+        // Retry after a short delay
+        setTimeout(showConfiguration, 500);
     }
 }
 

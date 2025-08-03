@@ -46,17 +46,20 @@
                     </p>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Sleeper League ID</label>
-                    <input type="text" class="form-input" id="sleeperLeagueId" placeholder="Enter your Sleeper League ID">
-                    <div class="example-text">Your Sleeper League ID for automatic league detection</div>
+                    <label class="form-label">Sleeper League ID or Draft URL</label>
+                    <input type="text" class="form-input" id="sleeperLeagueId" placeholder="League ID or paste mock draft URL">
+                    <div class="example-text">Your Sleeper League ID or full mock draft URL (e.g., sleeper.com/draft/nfl/1234567...)</div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Sleeper Username (Optional)</label>
-                    <input type="text" class="form-input" id="sleeperUserName" placeholder="Your Sleeper User ID for auto-detection">
-                    <div class="example-text">Find this in your Sleeper profile settings - enables automatic team detection</div>
+                    <label class="form-label">Sleeper Display Name (Optional)</label>
+                    <input type="text" class="form-input" id="sleeperUserName" placeholder="Your Sleeper display name for auto-detection">
+                    <div class="example-text">Your display name in Sleeper (not email) - enables automatic team detection</div>
                 </div>
                 <button type="button" class="btn btn-secondary" data-action="fetch-sleeper-data" id="fetchSleeperBtn" style="margin-top: 10px; width: 100%;">
                     <span>🔗</span> Auto-Fill All Fields from Sleeper
+                </button>
+                <button type="button" class="btn btn-outline" data-action="setup-demo-mode" style="margin-top: 10px; width: 100%;">
+                    <span>🎮</span> Try Demo Mode (No League Required)
                 </button>
                 <div id="sleeperStatus" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;"></div>
             </div>
@@ -86,14 +89,33 @@
                         <option value="16">16 Teams</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Scoring Format</label>
-                    <select class="form-select" id="scoringFormat">
-                        <option value="Standard">Standard (No PPR)</option>
-                        <option value="Half PPR" selected>Half PPR (0.5 per catch)</option>
-                        <option value="PPR">Full PPR (1 per catch)</option>
-                        <option value="Super Flex">Super Flex</option>
-                    </select>
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+                    <div class="form-group">
+                        <label class="form-label">Scoring Format</label>
+                        <select class="form-select" id="scoringFormat">
+                            <option value="Standard">Standard (No PPR)</option>
+                            <option value="Half PPR" selected>Half PPR (0.5 per catch)</option>
+                            <option value="PPR">Full PPR (1 per catch)</option>
+                            <option value="Super Flex">Super Flex</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Draft Position</label>
+                        <select class="form-select" id="draftPosition">
+                            <option value="1">1st Pick</option>
+                            <option value="2">2nd Pick</option>
+                            <option value="3">3rd Pick</option>
+                            <option value="4">4th Pick</option>
+                            <option value="5">5th Pick</option>
+                            <option value="6" selected>6th Pick</option>
+                            <option value="7">7th Pick</option>
+                            <option value="8">8th Pick</option>
+                            <option value="9">9th Pick</option>
+                            <option value="10">10th Pick</option>
+                            <option value="11">11th Pick</option>
+                            <option value="12">12th Pick</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -279,34 +301,7 @@
                     </div>
                 </div>
 
-                <!-- Draft Features Preview -->
-                <div class="grid grid-2">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">🚨 Panic Mode</h3>
-                        </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">⏰</div>
-                            <h4>Emergency Draft Help</h4>
-                            <p style="color: var(--text-secondary);">
-                                When it's your turn and you're not sure who to pick, Panic Mode gives you instant AI recommendations with explanations.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">📊 Live Analysis</h3>
-                        </div>
-                        <div class="feature-card">
-                            <div class="feature-icon">📈</div>
-                            <h4>Real-time Insights</h4>
-                            <p style="color: var(--text-secondary);">
-                                AI evaluates every pick in real-time with educational context about why each selection makes sense.
-                            </p>
-                        </div>
-                    </div>
-                </div>
+                <!-- Draft Features Preview - Removed static cards, functionality available via buttons -->
             </div>
             <!-- My Team Page -->
             <div class="page-content" id="my-team">

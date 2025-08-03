@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Fantasy Football App</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a2e; color: white; }
+        .debug-section { margin: 20px 0; padding: 20px; border: 1px solid #444; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .log { background: #000; padding: 10px; margin: 10px 0; font-family: monospace; max-height: 300px; overflow-y: auto; }
+        input { padding: 8px; margin: 5px; width: 300px; }
+    </style>
+</head>
+<body>
+    <h1>Debug Console</h1>
+    
+    <div class="debug-section">
+        <h2>Test Configuration</h2>
+        <input type="text" id="testLeagueId" placeholder="Enter Sleeper League ID">
+        <br>
+        <button onclick="testDirectAPI()">Test Direct API Call</button>
+        <button onclick="testConfigManager()">Test ConfigManager</button>
+        <button onclick="testEventManager()">Test EventManager</button>
+        <button onclick="checkManagers()">Check All Managers</button>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Console Log</h2>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <script>
+        // Override console.log to show in page
+        const originalLog = console.log;
+        const originalError = console.error;
+        const logDiv = document.getElementById('log');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            logDiv.innerHTML += args.join(' ') + '<br>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            logDiv.innerHTML += '<span style="color: red;">' + args.join(' ') + '</span><br>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+        
+        // Test functions
+        async function testDirectAPI() {
+            const leagueId = document.getElementById('testLeagueId').value;
+            if (!leagueId) {
+                console.log('❌ Please enter a League ID');
+                return;
+            }
+            
+            console.log('🔍 Testing direct API call to Sleeper...');
+            try {
+                const response = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
+                console.log('📡 Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ League found:', data.name);
+                    console.log('👥 Total rosters:', data.total_rosters);
+                } else {
+                    console.error('❌ League not found');
+                }
+            } catch (error) {
+                console.error('❌ API Error:', error.message);
+            }
+        }
+        
+        function testConfigManager() {
+            console.log('🔍 Testing ConfigManager...');
+            if (typeof ConfigManager === 'undefined') {
+                console.error('❌ ConfigManager not loaded');
+                return;
+            }
+            
+            if (window.configManager) {
+                console.log('✅ configManager instance exists');
+                console.log('📋 Current config:', window.configManager.config);
+            } else {
+                console.error('❌ configManager instance not found');
+            }
+        }
+        
+        function testEventManager() {
+            console.log('🔍 Testing EventManager...');
+            if (typeof EventManager === 'undefined') {
+                console.error('❌ EventManager not loaded');
+                return;
+            }
+            
+            if (window.eventManager) {
+                console.log('✅ eventManager instance exists');
+                console.log('📋 Status:', window.eventManager.getEventStatus());
+            } else {
+                console.error('❌ eventManager instance not found');
+            }
+        }
+        
+        function checkManagers() {
+            console.log('🔍 Checking all managers...');
+            console.log('configManager:', !!window.configManager);
+            console.log('navigationManager:', !!window.navigationManager);
+            console.log('learningManager:', !!window.learningManager);
+            console.log('draftTracker:', !!window.draftTracker);
+            console.log('eventManager:', !!window.eventManager);
+            
+            if (window.getAppStatus) {
+                console.log('📊 App Status:', window.getAppStatus());
+            }
+        }
+    </script>
+    
+    <!-- Load all the app scripts -->
+    <script src="js/core/config-manager.js"></script>
+    <script src="js/core/navigation-manager.js"></script>
+    <script src="js/core/learning-manager.js"></script>
+    <script src="js/core/event-manager.js"></script>
+    <script src="js/features/draft-tracker.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

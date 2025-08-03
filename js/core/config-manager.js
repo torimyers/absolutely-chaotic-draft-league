@@ -12,6 +12,7 @@ class ConfigManager {
             teamName: "",
             leagueSize: 12,
             scoringFormat: "Half PPR",
+            draftPosition: 6,
             
             // Season Stats
             teamRecord: "0-0",
@@ -49,7 +50,18 @@ class ConfigManager {
         
         // Show config panel for first-time users or incomplete setups
         if (this.isFirstTime || !this.config.isConfigured || (!this.config.leagueName && !this.config.teamName)) {
-            setTimeout(() => showConfiguration(), 500);
+            // Wait for EventManager to be ready
+            setTimeout(() => {
+                if (window.eventManager) {
+                    window.eventManager.showConfiguration();
+                } else {
+                    // Fallback: show config panel directly
+                    const configPanel = document.getElementById('configPanel');
+                    if (configPanel) {
+                        configPanel.classList.remove('hidden');
+                    }
+                }
+            }, 1000);
         }
     }
 
@@ -90,16 +102,60 @@ class ConfigManager {
     }
 
     async loadFromSleeper() {
-        const leagueId = this.config.sleeperLeagueId;
+        console.log('🔍 ConfigManager.loadFromSleeper() called');
+        
+        // Get league ID from form first
+        const leagueIdInput = document.getElementById('sleeperLeagueId');
+        let leagueId = leagueIdInput ? leagueIdInput.value.trim() : this.config.sleeperLeagueId;
+        
+        // Check if this is a draft URL or just contains 'draft'
+        if (leagueId.includes('draft')) {
+            this.showNotification('📋 Detected mock draft URL! For mock drafts, skip configuration and go directly to Live Draft tracking.', 'warning');
+            
+            // Extract draft ID if it's a full URL
+            const draftMatch = leagueId.match(/draft\/nfl\/(\d+)/);
+            if (draftMatch) {
+                const draftId = draftMatch[1];
+                console.log('📋 Extracted draft ID:', draftId);
+                // Store as draft ID, not league ID
+                this.config.sleeperDraftId = draftId;
+                this.config.sleeperLeagueId = null; // Clear league ID for mock drafts
+                this.config.isMockDraft = true;
+                
+                // Update the form to show the draft ID
+                this.updateFormFields({
+                    sleeperLeagueId: draftId
+                });
+                
+                // Auto-fill for mock draft
+                this.updateFormFields({
+                    leagueName: 'Mock Draft',
+                    teamName: 'My Mock Team',
+                    leagueSize: 12,
+                    scoringFormat: 'Half PPR'
+                });
+                
+                this.showNotification('✅ Mock draft configured! Go to Live Draft page to start tracking.', 'success');
+                this.config.isConfigured = true;
+                return true;
+            }
+        }
+        
+        console.log('📋 League ID:', leagueId);
+        
         if (!leagueId) {
             this.showNotification('❌ Please enter a Sleeper League ID first', 'error');
             return false;
         }
         
+        // Update config with the league ID
+        this.config.sleeperLeagueId = leagueId;
+        
         // Save username from form before API call
         const usernameInput = document.getElementById('sleeperUserName');
         if (usernameInput && usernameInput.value.trim()) {
             this.config.sleeperUsername = usernameInput.value.trim();
+            console.log('👤 Username:', this.config.sleeperUsername);
         }
         
         try {
@@ -121,23 +177,41 @@ class ConfigManager {
             const rosters = rostersResponse.ok ? await rostersResponse.json() : [];
             const users = usersResponse.ok ? await usersResponse.json() : [];
             
-            console.log('Sleeper Data:', { leagueData, rosters, users }); // Debug log
+            console.log('📊 Sleeper Data Received:', { 
+                league: leagueData.name,
+                rosters: rosters.length,
+                users: users.length 
+            });
+            console.log('👥 User details:', users.map(u => ({
+                display_name: u.display_name,
+                username: u.username || '(none)',
+                user_id: u.user_id
+            })));
+            
+            // Check if this is a mock draft
+            const isMockDraft = leagueData.status === 'drafting' && leagueData.settings?.type === 0;
             
             // Update basic league info
-            this.config.leagueName = leagueData.name || 'My Fantasy League';
-            this.config.leagueSize = leagueData.total_rosters || 12;
+            this.config.leagueName = leagueData.name || (isMockDraft ? 'Mock Draft' : 'My Fantasy League');
+            this.config.leagueSize = leagueData.total_rosters || leagueData.settings?.teams || 12;
             this.config.draftCompleted = leagueData.status === 'in_season' || leagueData.status === 'complete';
             
             // Determine scoring format
-            const scoringSettings = leagueData.scoring_settings;
+            const scoringSettings = leagueData.scoring_settings || leagueData.settings;
             if (scoringSettings) {
-                if (scoringSettings.rec === 1) {
+                if (scoringSettings.rec === 1 || scoringSettings.ppr === 1) {
                     this.config.scoringFormat = 'PPR';
                 } else if (scoringSettings.rec === 0.5) {
                     this.config.scoringFormat = 'Half PPR';
                 } else {
                     this.config.scoringFormat = 'Standard';
                 }
+            }
+            
+            // For mock drafts, we might not have rosters/users data
+            if (isMockDraft) {
+                console.log('🎯 Mock draft detected! Limited data available.');
+                this.showNotification('📋 Mock draft detected! You can skip team selection and go straight to draft tracking.', 'info');
             }
             
             // Auto-fill basic league info
@@ -169,12 +243,21 @@ class ConfigManager {
                         this.applyTeamData(selectedTeam);
                         return true;
                     } else {
-                        this.showNotification(`❌ Username "${sleeperUsername}" not found in league. Please select manually.`, 'warning');
+                        // Show available display names to help user
+                        const availableNames = users.map(u => u.display_name).filter(n => n).join(', ');
+                        this.showNotification(`❌ Display name "${sleeperUsername}" not found. Available: ${availableNames}`, 'warning');
                     }
                 }
                 
                 // Show team selection interface
                 this.showTeamSelectionInterface(rosters, users);
+            } else if (isMockDraft) {
+                // Mock drafts might not have roster/user data yet
+                this.showNotification('✅ Mock draft loaded! Skip to draft tracking - team will be assigned when draft starts.', 'success');
+                // Auto-fill a generic team name for mock drafts
+                this.updateFormFields({
+                    teamName: 'Mock Team'
+                });
             } else {
                 this.showNotification('✅ League data loaded! No team data available - please fill manually.', 'success');
             }
@@ -686,6 +769,13 @@ class ConfigManager {
 
     // NEW: Update Draft page content
     updateDraftPage(isConfigured) {
+        // Check if DraftTracker has already set up its interface
+        const draftTrackerUI = document.querySelector('#live-draft .draft-tracker-controls');
+        if (draftTrackerUI) {
+            console.log('✅ DraftTracker interface already set up, skipping ConfigManager draft page update');
+            return;
+        }
+        
         const draftEmpty = document.querySelector('#live-draft .empty-state');
         if (draftEmpty && isConfigured) {
             if (this.config.sleeperLeagueId) {
@@ -742,6 +832,7 @@ class ConfigManager {
             this.safeSetInputValue('teamName', this.config.teamName);
             this.safeSetInputValue('leagueSize', this.config.leagueSize);
             this.safeSetInputValue('scoringFormat', this.config.scoringFormat);
+            this.safeSetInputValue('draftPosition', this.config.draftPosition);
             this.safeSetInputValue('sleeperLeagueId', this.config.sleeperLeagueId);
             // FIX: Use the correct input field ID from HTML (sleeperUserName not sleeperUsername)
             this.safeSetInputValue('sleeperUserName', this.config.sleeperUsername || '');
@@ -751,6 +842,11 @@ class ConfigManager {
             if (statusDiv) {
                 statusDiv.style.display = 'none';
                 statusDiv.innerHTML = '';
+            }
+
+            // Update draft position options based on league size
+            if (window.eventManager && window.eventManager.updateDraftPositionOptions) {
+                window.eventManager.updateDraftPositionOptions(this.config.leagueSize || 12);
             }
 
             console.log('Config form populated with:', this.config);
