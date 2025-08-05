@@ -1,0 +1,712 @@
+/**
+ * Analytics Styles - Performance Analytics and Trend Analysis
+ */
+
+/* Analytics Container */
+#performance-analytics-container {
+    width: 100%;
+}
+
+.analytics-empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+}
+
+.analytics-empty-state .icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+}
+
+.analytics-empty-state h3 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.analytics-empty-state p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.analytics-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+}
+
+.analytics-actions .btn {
+    min-width: 180px;
+    padding: 0.75rem 1.5rem;
+}
+
+/* Analytics Header */
+.analytics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.analytics-header h3 {
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.roster-health-score {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.score-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 2px solid;
+}
+
+.score-excellent {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border-color: #22c55e;
+}
+
+.score-good {
+    background: rgba(34, 197, 94, 0.15);
+    color: #16a34a;
+    border-color: #16a34a;
+}
+
+.score-average {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    border-color: #fbbf24;
+}
+
+.score-poor {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border-color: #ef4444;
+}
+
+/* Analytics Summary */
+.analytics-summary {
+    margin-bottom: 2rem;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Performance Sections */
+.performance-section {
+    margin-bottom: 3rem;
+}
+
+.performance-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.25rem;
+}
+
+.performance-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+}
+
+/* Player Performance Cards */
+.player-performance-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border-left: 4px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.player-performance-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.player-performance-card.high-performer {
+    border-left-color: #22c55e;
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.player-performance-card.breakout {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.player-performance-card.concerning {
+    border-left-color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.player-header {
+    margin-bottom: 1rem;
+}
+
+.player-performance-card .player-name {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.player-performance-card .player-details {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+/* Performance Metrics */
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+}
+
+.metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.metric-label {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.metric-value {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+/* Performance Insights */
+.performance-insights {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: rgba(69, 183, 209, 0.1);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-color);
+}
+
+.performance-insights strong {
+    color: var(--accent-color);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.performance-insights ul {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.performance-insights li {
+    margin-bottom: 0.25rem;
+    line-height: 1.5;
+}
+
+/* Performance Recommendations */
+.performance-recommendations {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid #16a34a;
+}
+
+.performance-recommendations strong {
+    color: #16a34a;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.performance-recommendations ul {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.performance-recommendations li {
+    margin-bottom: 0.25rem;
+    line-height: 1.5;
+}
+
+/* Trend Analysis Styles */
+.trend-analysis-container {
+    margin-top: 2rem;
+}
+
+.trend-section {
+    margin-bottom: 2rem;
+}
+
+.trend-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.trend-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.trend-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 1.25rem;
+    border-left: 4px solid var(--accent-color);
+    transition: all 0.3s ease;
+}
+
+.trend-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(2px);
+}
+
+.trend-card.breakout {
+    border-left-color: #f59e0b;
+}
+
+.trend-card.declining {
+    border-left-color: #ef4444;
+}
+
+.trend-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.trend-confidence {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.confidence-high {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.confidence-medium {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.confidence-low {
+    background: rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+}
+
+/* Market Sentiment */
+.market-sentiment {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.sentiment-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.sentiment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.sentiment-item {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.sentiment-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.sentiment-value {
+    display: block;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.sentiment-optimistic {
+    color: #22c55e;
+}
+
+.sentiment-pessimistic {
+    color: #ef4444;
+}
+
+.sentiment-neutral {
+    color: var(--text-secondary);
+}
+
+.sentiment-bullish {
+    color: #22c55e;
+}
+
+.sentiment-bearish {
+    color: #ef4444;
+}
+
+/* Recommendations Panel */
+.recommendations-panel {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+
+.recommendations-panel h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.recommendation-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid var(--border-color);
+}
+
+.recommendation-item.priority-high {
+    border-left-color: #ef4444;
+}
+
+.recommendation-item.priority-medium {
+    border-left-color: #fbbf24;
+}
+
+.recommendation-item.priority-low {
+    border-left-color: #22c55e;
+}
+
+.recommendation-content {
+    flex: 1;
+}
+
+.recommendation-action {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.recommendation-reasoning {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.recommendation-priority {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.priority-high {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.priority-medium {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.priority-low {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .performance-grid {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+    
+    .summary-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .analytics-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .analytics-actions .btn {
+        width: 100%;
+        max-width: 280px;
+    }
+    
+    .analytics-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .performance-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .performance-metrics {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .trend-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .sentiment-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .recommendation-item {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-start;
+    }
+}
+
+/* Loading States */
+.analytics-loading {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-secondary);
+}
+
+.analytics-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--accent-color);
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Trend Catalysts and Risks */
+.trend-catalysts,
+.trend-risks {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+
+.trend-catalysts strong,
+.trend-risks strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--accent-color);
+}
+
+.trend-catalysts ul,
+.trend-risks ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.trend-catalysts li,
+.trend-risks li {
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+.trend-concerns {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+
+.trend-concerns strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #ef4444;
+}
+
+.trend-concerns ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.trend-concerns li {
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+/* Trend Severity Indicators */
+.trend-severity {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.severity-severe {
+    background: rgba(220, 38, 38, 0.2);
+    color: #dc2626;
+}
+
+.severity-high {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.severity-moderate {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+/* Emerging Trends */
+.emerging-trends {
+    display: grid;
+    gap: 1rem;
+}
+
+.emerging-trend-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 1rem;
+    border-left: 4px solid var(--accent-color);
+}
+
+.trend-type {
+    font-weight: 700;
+    color: var(--accent-color);
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.trend-description {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.trend-implication {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.trend-implication strong {
+    color: var(--text-primary);
+}
+
+/* Additional Trend Metrics */
+.trend-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+
+/* Chart Placeholder */
+.chart-placeholder {
+    height: 200px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 1rem 0;
+}

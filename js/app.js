@@ -1,7 +1,7 @@
 // Fantasy Football App - Main Application Entry Point (Refactored with EventManager)
 
 // Application managers
-let configManager, navigationManager, learningManager, draftTracker, eventManager;
+let configManager, navigationManager, learningManager, draftTracker, eventManager, teamManager, waiverWireManager, performanceAnalytics, leagueAnalyzer, tradeAnalyzer, playoffSimulator;
 
 // Initialize app components
 document.addEventListener('DOMContentLoaded', function() {
@@ -16,10 +16,39 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('✅ Core systems initialized');
         
         // Initialize features after core is ready
-        setTimeout(() => {
+        setTimeout(async () => {
             try {
                 draftTracker = new DraftTracker(configManager);
                 console.log('✅ Draft tracker initialized');
+                
+                // Initialize team manager
+                teamManager = new TeamManager(configManager);
+                console.log('✅ Team manager initialized');
+                
+                // Initialize waiver wire manager
+                waiverWireManager = new WaiverWireManager(configManager);
+                await waiverWireManager.initialize();
+                console.log('✅ Waiver wire manager initialized');
+                
+                // Initialize performance analytics
+                performanceAnalytics = new PerformanceAnalytics(configManager);
+                await performanceAnalytics.initialize();
+                console.log('✅ Performance analytics initialized');
+                
+                // Initialize league analyzer
+                leagueAnalyzer = new LeagueAnalyzer(configManager);
+                await leagueAnalyzer.initialize();
+                console.log('✅ League analyzer initialized');
+                
+                // Initialize trade analyzer
+                tradeAnalyzer = new TradeAnalyzer(configManager);
+                await tradeAnalyzer.initialize();
+                console.log('✅ Trade analyzer initialized');
+                
+                // Initialize playoff simulator
+                playoffSimulator = new PlayoffSimulator(configManager);
+                await playoffSimulator.initialize();
+                console.log('✅ Playoff simulator initialized');
                 
                 // Initialize EventManager last - it needs all other managers
                 eventManager = new EventManager(
@@ -40,6 +69,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.navigationManager = navigationManager;
                 window.learningManager = learningManager;
                 window.draftTracker = draftTracker;
+                window.teamManager = teamManager;
+                window.waiverWireManager = waiverWireManager;
+                window.performanceAnalytics = performanceAnalytics;
+                window.leagueAnalyzer = leagueAnalyzer;
+                window.tradeAnalyzer = tradeAnalyzer;
+                window.playoffSimulator = playoffSimulator;
                 window.eventManager = eventManager;
                 
             } catch (error) {
@@ -196,6 +231,12 @@ function getAppStatus() {
         navigationManager: !!navigationManager,
         learningManager: !!learningManager,
         draftTracker: !!draftTracker,
+        teamManager: !!teamManager,
+        waiverWireManager: !!waiverWireManager,
+        performanceAnalytics: !!performanceAnalytics,
+        leagueAnalyzer: !!leagueAnalyzer,
+        tradeAnalyzer: !!tradeAnalyzer,
+        playoffSimulator: !!playoffSimulator,
         eventManager: !!eventManager,
         eventSystemStatus: eventManager ? eventManager.getEventStatus() : null,
         configStatus: configManager ? configManager.getConfigStatus() : null

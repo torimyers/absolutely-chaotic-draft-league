@@ -1,0 +1,1136 @@
+/**
+ * Team Manager Styles - Post-Draft Season Management
+ */
+
+/* Team Management Interface */
+#teamManagerInterface {
+    width: 100%;
+}
+
+.team-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.team-header h2 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.team-header p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* Team Actions */
+.team-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.team-actions .btn {
+    min-width: 180px;
+    padding: 0.75rem 1.5rem;
+}
+
+/* Roster Display */
+.roster-container {
+    margin-top: 2rem;
+}
+
+.roster-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.roster-header h3 {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.team-stats {
+    display: flex;
+    gap: 2rem;
+}
+
+.team-stats .stat {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+/* Roster Grid */
+.roster-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.starters h4,
+.bench h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Player Cards */
+.player-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.player-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(2px);
+}
+
+.player-card.starter {
+    border-left-color: var(--accent-color);
+    background: rgba(69, 183, 209, 0.1);
+}
+
+.player-card.bench {
+    border-left-color: var(--text-secondary);
+}
+
+.player-info {
+    flex: 1;
+}
+
+.player-name {
+    display: block;
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.player-details {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.player-status {
+    text-align: right;
+}
+
+.status-indicator {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Status Colors */
+.status-indicator:contains("HEALTHY") {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.status-indicator:contains("QUESTIONABLE") {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.status-indicator:contains("DOUBTFUL") {
+    background: rgba(251, 146, 60, 0.2);
+    color: #fb923c;
+}
+
+.status-indicator:contains("OUT") {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+/* Lineup Optimization */
+.lineup-container {
+    margin-top: 2rem;
+}
+
+.optimization-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.optimization-header h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.optimization-header p {
+    color: var(--text-secondary);
+}
+
+/* Recommendations Grid */
+.recommendations-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.recommendation-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border-left: 4px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.recommendation-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.recommendation-card.start {
+    border-left-color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.recommendation-card.sit {
+    border-left-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.recommendation-card.consider {
+    border-left-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.rec-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.rec-type {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.rec-type:contains("START") {
+    background: #22c55e;
+    color: white;
+}
+
+.rec-type:contains("SIT") {
+    background: #ef4444;
+    color: white;
+}
+
+.rec-type:contains("CONSIDER") {
+    background: #fbbf24;
+    color: white;
+}
+
+.confidence {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.rec-player {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.rec-reasoning {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.rec-alternatives {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Matchup Analysis */
+.matchup-container {
+    margin-top: 2rem;
+}
+
+.matchup-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.matchup-header h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.matchup-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.matchup-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border-left: 4px solid var(--accent-color);
+}
+
+.matchup-player {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.matchup-opponent {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.rating {
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.rating.excellent {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.rating.good {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.rating.average {
+    background: rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+}
+
+.rating.poor {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.matchup-reasoning {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* Team Selector Modal */
+.team-selector-modal .modal-content {
+    border: 1px solid var(--border-color);
+}
+
+.modal-teams {
+    padding: 1rem;
+}
+
+.selectable-team {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.selectable-team:hover {
+    background: rgba(69, 183, 209, 0.1) !important;
+    border-left: 4px solid var(--accent-color);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .roster-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .team-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .team-actions .btn {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .team-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .roster-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .rec-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+}
+
+/* Loading States */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+    transform: none;
+}
+
+/* Empty Slot Styling */
+.player-slot {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.02);
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+/* Injury Report Styles */
+.injury-report-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.injury-report-header h3 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.risk-indicator {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+}
+
+.risk-indicator.risk-low {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border: 1px solid #22c55e;
+}
+
+.risk-indicator.risk-medium {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    border: 1px solid #fbbf24;
+}
+
+.risk-indicator.risk-high {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid #ef4444;
+}
+
+/* Injured Players Section */
+.injured-players-section {
+    margin-bottom: 2rem;
+}
+
+.injured-players-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.injury-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.injury-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border-left: 4px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.injury-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.injury-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.injury-card .player-name {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.injury-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.injury-status.out {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.injury-status.doubtful {
+    background: rgba(251, 146, 60, 0.2);
+    color: #fb923c;
+}
+
+.injury-status.questionable {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.injury-status.ir {
+    background: rgba(127, 29, 29, 0.2);
+    color: #dc2626;
+}
+
+.injury-explanation {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+.injury-recommendation {
+    color: var(--accent-color);
+    font-weight: 600;
+    padding: 0.75rem;
+    background: rgba(69, 183, 209, 0.1);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-color);
+}
+
+/* Backup Suggestions Section */
+.backup-suggestions-section {
+    margin-bottom: 2rem;
+}
+
+.backup-suggestions-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.backup-group {
+    margin-bottom: 2rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.backup-header {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.backup-options {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.backup-option {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 1rem;
+    border-left: 4px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.backup-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(2px);
+}
+
+.backup-option.availability-high {
+    border-left-color: #22c55e;
+}
+
+.backup-option.availability-medium {
+    border-left-color: #fbbf24;
+}
+
+.backup-option.availability-low {
+    border-left-color: #ef4444;
+}
+
+.backup-name {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.backup-details {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+}
+
+.backup-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+}
+
+.backup-stats span {
+    color: var(--text-secondary);
+}
+
+.backup-stats .availability {
+    font-weight: 600;
+}
+
+.availability-high {
+    color: #22c55e !important;
+}
+
+.availability-medium {
+    color: #fbbf24 !important;
+}
+
+.availability-low {
+    color: #ef4444 !important;
+}
+
+.backup-reasoning {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    font-style: italic;
+}
+
+/* Healthy Players Section */
+.healthy-players-section {
+    margin-bottom: 2rem;
+}
+
+.healthy-players-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.healthy-summary {
+    color: var(--text-secondary);
+    padding: 1.5rem;
+    background: rgba(34, 197, 94, 0.1);
+    border-radius: 8px;
+    border-left: 4px solid #22c55e;
+    text-align: center;
+}
+
+/* Responsive Design for Injury Report */
+@media (max-width: 768px) {
+    .injury-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .backup-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .injury-header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .injury-status {
+        align-self: flex-start;
+    }
+    
+    .backup-stats {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}
+
+/* League Analysis Styles */
+.league-analysis-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.league-analysis-header h3 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.overall-competitive-score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.overall-competitive-score .score-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.overall-competitive-score .score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 2px solid currentColor;
+}
+
+/* League Summary */
+.league-summary {
+    margin-bottom: 2rem;
+}
+
+.team-overview h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.team-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.stat-card {
+    text-align: center;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.stat-card .stat-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card .stat-value {
+    display: block;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+/* League Rankings */
+.league-rankings-section {
+    margin-bottom: 2rem;
+}
+
+.league-rankings-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.rankings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.ranking-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.ranking-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.ranking-value {
+    font-weight: 700;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.competitive-level {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(69, 183, 209, 0.1);
+    border-radius: 8px;
+    color: var(--text-primary);
+}
+
+/* Strengths Section */
+.strengths-section {
+    margin-bottom: 2rem;
+}
+
+.strengths-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.strengths-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.strength-item {
+    background: rgba(34, 197, 94, 0.1);
+    border-left: 4px solid #22c55e;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.strength-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.strength-area {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.strength-rating {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.strength-description {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.strength-advantage {
+    color: #22c55e;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+/* Weaknesses Section */
+.weaknesses-section {
+    margin-bottom: 2rem;
+}
+
+.weaknesses-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.weaknesses-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.weakness-item {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 4px solid #ef4444;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.weakness-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.weakness-area {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.weakness-rating {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.weakness-description {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.weakness-deficit {
+    color: #ef4444;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+/* Trade Targets Section */
+.trade-targets-section {
+    margin-bottom: 2rem;
+}
+
+.trade-targets-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.trade-targets-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+}
+
+.trade-target-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid var(--accent-color);
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.trade-target-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.trade-target-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.target-team {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.trade-priority {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.trade-priority.priority-high {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.trade-priority.priority-medium {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.trade-reasoning {
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+}
+
+.trade-details {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+/* Recommendations Section */
+.recommendations-section {
+    margin-bottom: 2rem;
+}
+
+.recommendations-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.recommendations-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.recommendations-list .recommendation-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.recommendations-list .recommendation-item.priority-high {
+    border-left-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.recommendations-list .recommendation-item.priority-medium {
+    border-left-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.05);
+}
+
+.recommendations-list .recommendation-item.priority-low {
+    border-left-color: #22c55e;
+    background: rgba(34, 197, 94, 0.05);
+}
+
+.rec-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.rec-type {
+    color: var(--accent-color);
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.rec-priority {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+}
+
+.rec-action {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.rec-reasoning {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.rec-impact {
+    color: var(--accent-color);
+    font-size: 0.875rem;
+}
+
+/* Overall Assessment */
+.overall-assessment {
+    margin-bottom: 2rem;
+}
+
+.overall-assessment h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.assessment-content {
+    padding: 1.5rem;
+    background: rgba(69, 183, 209, 0.1);
+    border-left: 4px solid var(--accent-color);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    font-size: 1rem;
+}
+
+/* Responsive Design for League Analysis */
+@media (max-width: 768px) {
+    .overall-competitive-score {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .team-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .rankings-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .strengths-grid,
+    .weaknesses-grid,
+    .trade-targets-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .trade-target-header,
+    .strength-header,
+    .weakness-header,
+    .rec-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+}
