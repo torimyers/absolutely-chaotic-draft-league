@@ -18,7 +18,7 @@ class TeamManager {
     }
 
     async initialize() {
-        console.log('<� TeamManager: Initializing post-draft management...');
+        console.log('🏈 TeamManager: Initializing post-draft management...');
         
         // Set up UI
         this.setupTeamUI();
@@ -26,7 +26,7 @@ class TeamManager {
         // Load current week
         await this.loadCurrentWeek();
         
-        console.log(' TeamManager: Initialization complete');
+        console.log('✅ TeamManager: Initialization complete');
     }
 
     async loadCurrentWeek() {
@@ -34,9 +34,9 @@ class TeamManager {
             // Get NFL state to determine current week
             const nflState = await this.sleeperAPI.fetchAPI('/state/nfl');
             this.currentWeek = nflState.week;
-            console.log(`=� Current NFL Week: ${this.currentWeek}`);
+            console.log(`📅 Current NFL Week: ${this.currentWeek}`);
         } catch (error) {
-            console.error('L Error loading current week:', error);
+            console.error('❌ Error loading current week:', error);
             this.currentWeek = 1; // Default fallback
         }
     }
@@ -44,7 +44,7 @@ class TeamManager {
     setupTeamUI() {
         const teamPage = document.getElementById('my-team');
         if (!teamPage) {
-            console.warn('L Team page not found');
+            console.warn('❌ Team page not found');
             return;
         }
 
@@ -54,19 +54,19 @@ class TeamManager {
             emptyState.innerHTML = `
                 <div id="teamManagerInterface">
                     <div class="team-header">
-                        <h2>=� Season Management Dashboard</h2>
+                        <h2>📊 Season Management Dashboard</h2>
                         <p>AI-powered lineup optimization and roster insights</p>
                     </div>
                     
                     <div class="team-actions">
                         <button class="btn btn-primary" onclick="teamManager.loadRoster()" id="loadRosterBtn">
-                            <span>=�</span> Load Current Roster
+                            <span>📋</span> Load Current Roster
                         </button>
                         <button class="btn btn-secondary" onclick="teamManager.optimizeLineup()" id="optimizeLineupBtn" disabled>
-                            <span><�</span> Optimize Lineup
+                            <span>🎯</span> Optimize Lineup
                         </button>
                         <button class="btn btn-outline" onclick="teamManager.analyzeMatchups()" id="analyzeMatchupsBtn" disabled>
-                            <span>�</span> Analyze Matchups
+                            <span>⚔️</span> Analyze Matchups
                         </button>
                     </div>
 
@@ -93,7 +93,7 @@ class TeamManager {
         if (!loadBtn) return;
 
         loadBtn.disabled = true;
-        loadBtn.innerHTML = '<span>�</span> Loading...';
+        loadBtn.innerHTML = '<span>⏳</span> Loading...';
 
         try {
             const leagueId = this.configManager.config.sleeperLeagueId;
@@ -127,14 +127,14 @@ class TeamManager {
             this.addTradeAnalyzerButton();
             this.addPlayoffSimulatorButton();
             
-            this.configManager.showNotification(' Roster loaded successfully!', 'success');
+            this.configManager.showNotification('✅ Roster loaded successfully!', 'success');
 
         } catch (error) {
-            console.error('L Error loading roster:', error);
-            this.configManager.showNotification(`L Error: ${error.message}`, 'error');
+            console.error('❌ Error loading roster:', error);
+            this.configManager.showNotification(`❌ Error: ${error.message}`, 'error');
         } finally {
             loadBtn.disabled = false;
-            loadBtn.innerHTML = '<span>=�</span> Load Current Roster';
+            loadBtn.innerHTML = '<span>📋</span> Load Current Roster';
         }
     }
 
@@ -148,7 +148,7 @@ class TeamManager {
             if (user) {
                 const roster = rosters.find(r => r.owner_id === user.user_id);
                 if (roster) {
-                    console.log(' Found roster by configured username');
+                    console.log('✅ Found roster by configured username');
                     return { roster, user };
                 }
             }
@@ -157,7 +157,7 @@ class TeamManager {
         // If only one roster, assume it's the user's
         if (rosters.length === 1) {
             const user = users.find(u => u.user_id === rosters[0].owner_id);
-            console.log(' Using single roster in league');
+            console.log('✅ Using single roster in league');
             return { roster: rosters[0], user };
         }
 
@@ -236,21 +236,21 @@ class TeamManager {
 
         rosterDisplay.innerHTML = `
             <div class="roster-header">
-                <h3><� ${teamName}</h3>
+                <h3>🏈 ${teamName}</h3>
                 <div class="team-stats">
-                    <span class="stat">=� ${roster.settings?.wins || 0}-${roster.settings?.losses || 0}-${roster.settings?.ties || 0}</span>
-                    <span class="stat"><� ${roster.settings?.fpts || 0} PF</span>
-                    <span class="stat">=� ${roster.settings?.fpts_against || 0} PA</span>
+                    <span class="stat">📊 ${roster.settings?.wins || 0}-${roster.settings?.losses || 0}-${roster.settings?.ties || 0}</span>
+                    <span class="stat">🏆 ${roster.settings?.fpts || 0} PF</span>
+                    <span class="stat">🛡️ ${roster.settings?.fpts_against || 0} PA</span>
                 </div>
             </div>
             
             <div class="roster-grid">
                 <div class="starters">
-                    <h4>=% Starting Lineup (Week ${this.currentWeek})</h4>
+                    <h4>🔥 Starting Lineup (Week ${this.currentWeek})</h4>
                     <div id="startersList">Loading players...</div>
                 </div>
                 <div class="bench">
-                    <h4>=� Bench Players</h4>
+                    <h4>📋 Bench Players</h4>
                     <div id="benchList">Loading players...</div>
                 </div>
             </div>
@@ -314,7 +314,7 @@ class TeamManager {
             }
 
         } catch (error) {
-            console.error('L Error loading player details:', error);
+            console.error('❌ Error loading player details:', error);
         }
     }
 
@@ -322,16 +322,16 @@ class TeamManager {
         // Simple status indicator based on injury status
         if (player.injury_status) {
             const status = player.injury_status.toLowerCase();
-            if (status === 'out') return '=� OUT';
-            if (status === 'doubtful') return '� DOUBTFUL'; 
-            if (status === 'questionable') return 'S QUESTIONABLE';
+            if (status === 'out') return '🚫 OUT';
+            if (status === 'doubtful') return '⚠️ DOUBTFUL'; 
+            if (status === 'questionable') return '❓ QUESTIONABLE';
         }
-        return ' HEALTHY';
+        return '✅ HEALTHY';
     }
 
     async optimizeLineup() {
         if (!this.currentRoster) {
-            this.configManager.showNotification('L Load your roster first', 'error');
+            this.configManager.showNotification('❌ Load your roster first', 'error');
             return;
         }
 
@@ -339,7 +339,7 @@ class TeamManager {
         if (!optimizeBtn) return;
 
         optimizeBtn.disabled = true;
-        optimizeBtn.innerHTML = '<span>�</span> Optimizing...';
+        optimizeBtn.innerHTML = '<span>⏳</span> Optimizing...';
 
         try {
             // Initialize lineup optimizer
@@ -353,14 +353,14 @@ class TeamManager {
 
             this.displayLineupOptimization(recommendations);
             
-            this.configManager.showNotification('<� Lineup optimization complete!', 'success');
+            this.configManager.showNotification('🎯 Lineup optimization complete!', 'success');
 
         } catch (error) {
-            console.error('L Error optimizing lineup:', error);
-            this.configManager.showNotification(`L Error: ${error.message}`, 'error');
+            console.error('❌ Error optimizing lineup:', error);
+            this.configManager.showNotification(`❌ Error: ${error.message}`, 'error');
         } finally {
             optimizeBtn.disabled = false;
-            optimizeBtn.innerHTML = '<span><�</span> Optimize Lineup';
+            optimizeBtn.innerHTML = '<span>🎯</span> Optimize Lineup';
         }
     }
 
@@ -370,7 +370,7 @@ class TeamManager {
 
         container.innerHTML = `
             <div class="optimization-header">
-                <h3><� Week ${this.currentWeek} Lineup Recommendations</h3>
+                <h3>🎯 Week ${this.currentWeek} Lineup Recommendations</h3>
                 <p>AI-powered start/sit suggestions with explanations</p>
             </div>
             
@@ -402,7 +402,7 @@ class TeamManager {
 
     async analyzeMatchups() {
         if (!this.currentRoster) {
-            this.configManager.showNotification('L Load your roster first', 'error');
+            this.configManager.showNotification('❌ Load your roster first', 'error');
             return;
         }
 
@@ -410,7 +410,7 @@ class TeamManager {
         if (!analyzeBtn) return;
 
         analyzeBtn.disabled = true;
-        analyzeBtn.innerHTML = '<span>�</span> Analyzing...';
+        analyzeBtn.innerHTML = '<span>⏳</span> Analyzing...';
 
         try {
             // Placeholder for matchup analysis
@@ -419,14 +419,14 @@ class TeamManager {
             
             this.displayMatchupAnalysis(analysis);
             
-            this.configManager.showNotification('� Matchup analysis complete!', 'success');
+            this.configManager.showNotification('⚔️ Matchup analysis complete!', 'success');
 
         } catch (error) {
-            console.error('L Error analyzing matchups:', error);
-            this.configManager.showNotification(`L Error: ${error.message}`, 'error');
+            console.error('❌ Error analyzing matchups:', error);
+            this.configManager.showNotification(`❌ Error: ${error.message}`, 'error');
         } finally {
             analyzeBtn.disabled = false;
-            analyzeBtn.innerHTML = '<span>�</span> Analyze Matchups';
+            analyzeBtn.innerHTML = '<span>⚔️</span> Analyze Matchups';
         }
     }
 
@@ -448,7 +448,7 @@ class TeamManager {
 
         container.innerHTML = `
             <div class="matchup-header">
-                <h3>� Week ${this.currentWeek} Matchup Analysis</h3>
+                <h3>⚔️ Week ${this.currentWeek} Matchup Analysis</h3>
                 <p>Opponent analysis and game environment factors</p>
             </div>
             
