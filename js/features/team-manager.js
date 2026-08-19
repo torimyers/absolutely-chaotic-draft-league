@@ -176,7 +176,7 @@ class TeamManager {
             `;
 
             modal.innerHTML = `
-                <div class="modal-content" style="background: var(--card-bg); border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow: hidden;">
+                <div class="modal-content" style="background: var(--modal-bg); border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow: hidden;">
                     <div class="modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);">
                         <h3 style="margin: 0; color: var(--text-primary);">Select Your Team</h3>
                     </div>

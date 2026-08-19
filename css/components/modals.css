@@ -37,7 +37,7 @@
    ======================================== */
 
 .modal {
-    background: var(--card-bg);
+    background: var(--modal-bg);
     border-radius: var(--border-radius-xl);
     padding: var(--space-xxl);
     max-width: 600px;

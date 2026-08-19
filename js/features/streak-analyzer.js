@@ -369,7 +369,11 @@ class StreakAnalysisUI {
         }
 
         const analyses = this.analyzer.analyzeMultiplePlayers(playersData);
-        
+
+        // Retained so "View Detailed Analysis" can expand a card without re-running
+        // the analyzer or refetching the game logs.
+        this.analyses = analyses;
+
         this.container.innerHTML = `
             <div class="streak-analysis-header">
                 <h2>🔥 Hot/Cold Streak Analysis</h2>
@@ -526,16 +530,157 @@ class StreakAnalysisUI {
      * Show detailed analysis modal
      */
     showDetailedAnalysis(playerName) {
-        // This would open a detailed modal with more in-depth analysis
-        console.log(`Showing detailed analysis for ${playerName}`);
-        
-        // For now, show a notification
-        if (window.eventManager) {
-            window.eventManager.showNotification(
-                `🔍 Detailed analysis for ${playerName} coming soon! This will include target share trends, snap counts, and matchup analysis.`,
-                'info',
-                5000
-            );
+        const analysis = (this.analyses || []).find(a => a.player === playerName);
+
+        if (!analysis) {
+            console.warn(`No streak analysis held for ${playerName}`);
+            return;
+        }
+
+        const existing = document.getElementById('streakDetailModal');
+        if (existing) existing.remove();
+
+        const summary = this.analyzer.getStreakSummary(analysis);
+        const ctx = analysis.educationalContext;
+        const games = analysis.visualData;
+
+        const best = games.reduce((a, b) => (b.ratio > a.ratio ? b : a), games[0]);
+        const worst = games.reduce((a, b) => (b.ratio < a.ratio ? b : a), games[0]);
+        const beat = games.filter(g => g.performance === 'above').length;
+        const totalActual = games.reduce((sum, g) => sum + g.actual, 0);
+        const totalProjected = games.reduce((sum, g) => sum + g.projected, 0);
+
+        const modal = document.createElement('div');
+        modal.id = 'streakDetailModal';
+        modal.className = 'streak-detail-modal';
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85); z-index: 1001;
+            display: flex; align-items: center; justify-content: center;
+        `;
+
+        modal.innerHTML = `
+            <div class="modal-content" style="background: var(--modal-bg); border-radius: 12px; width: 92%; max-width: 680px; max-height: 88vh; overflow: hidden; display: flex; flex-direction: column;">
+                <div class="modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="margin: 0; color: var(--text-primary);">${summary.emoji} ${analysis.player}</h3>
+                        <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                            ${analysis.position} · ${analysis.team} · ${analysis.streakType.replace('_', ' ')}
+                        </div>
+                    </div>
+                    <button class="streak-detail-close" aria-label="Close"
+                            style="background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+                </div>
+
+                <div style="padding: 1rem 1.5rem; overflow-y: auto;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;">
+                        <div class="metric-card">
+                            <div class="metric-value">${(analysis.avgPerformanceRatio * 100).toFixed(0)}%</div>
+                            <div class="metric-label">vs Projection</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${analysis.confidence}%</div>
+                            <div class="metric-label">Confidence</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${(analysis.consistency * 100).toFixed(0)}%</div>
+                            <div class="metric-label">Consistency</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${beat}/${games.length}</div>
+                            <div class="metric-label">Games Beat Proj.</div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 0 0 0.5rem; color: var(--text-primary);">📊 Game-by-game</h4>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 1.25rem;">
+                        <thead>
+                            <tr style="color: var(--text-secondary); text-align: left;">
+                                <th style="padding: 0.4rem 0;">Week</th>
+                                <th style="padding: 0.4rem 0;">Actual</th>
+                                <th style="padding: 0.4rem 0;">Projected</th>
+                                <th style="padding: 0.4rem 0;">Diff</th>
+                                <th style="padding: 0.4rem 0;">vs Proj.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${games.map(g => {
+                                const diff = g.actual - g.projected;
+                                const color = g.performance === 'above' ? '#2ecc71'
+                                            : g.performance === 'below' ? '#ef4444' : 'var(--text-secondary)';
+                                return `
+                                    <tr style="border-top: 1px solid var(--border-color);">
+                                        <td style="padding: 0.4rem 0; color: var(--text-primary);">${g.week}</td>
+                                        <td style="padding: 0.4rem 0; color: var(--text-primary);">${g.actual.toFixed(1)}</td>
+                                        <td style="padding: 0.4rem 0; color: var(--text-secondary);">${g.projected.toFixed(1)}</td>
+                                        <td style="padding: 0.4rem 0; color: ${color};">${diff >= 0 ? '+' : ''}${diff.toFixed(1)}</td>
+                                        <td style="padding: 0.4rem 0; color: ${color}; font-weight: 500;">${(g.ratio * 100).toFixed(0)}%</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                            <tr style="border-top: 2px solid var(--border-color); font-weight: 600;">
+                                <td style="padding: 0.4rem 0; color: var(--text-primary);">Total</td>
+                                <td style="padding: 0.4rem 0; color: var(--text-primary);">${totalActual.toFixed(1)}</td>
+                                <td style="padding: 0.4rem 0; color: var(--text-secondary);">${totalProjected.toFixed(1)}</td>
+                                <td colspan="2" style="padding: 0.4rem 0; color: var(--text-primary);">
+                                    ${totalActual >= totalProjected ? '+' : ''}${(totalActual - totalProjected).toFixed(1)} pts
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 1.25rem;">
+                        Best week: <strong style="color: var(--text-primary);">Week ${best.week}</strong> (${(best.ratio * 100).toFixed(0)}% of projection) ·
+                        Worst week: <strong style="color: var(--text-primary);">Week ${worst.week}</strong> (${(worst.ratio * 100).toFixed(0)}%)
+                    </p>
+
+                    <h4 style="margin: 0 0 0.5rem; color: var(--text-primary);">${ctx.title}</h4>
+                    <p style="color: var(--text-secondary); margin-top: 0;">${ctx.explanation}</p>
+
+                    <h5 style="margin: 1rem 0 0.35rem; color: var(--text-primary);">Why it matters</h5>
+                    <p style="color: var(--text-secondary); margin-top: 0;">${ctx.whyItMatters}</p>
+
+                    <h5 style="margin: 1rem 0 0.35rem; color: var(--text-primary);">What to check</h5>
+                    <ul style="color: var(--text-secondary); margin-top: 0; padding-left: 1.2rem;">
+                        ${(ctx.considerations || []).map(c => `<li>${c}</li>`).join('')}
+                    </ul>
+
+                    <h5 style="margin: 1rem 0 0.35rem; color: var(--text-primary);">🎯 Every recommendation</h5>
+                    <ul style="color: var(--text-secondary); margin-top: 0; padding-left: 1.2rem;">
+                        ${analysis.actionableAdvice.map(a => `<li>${a}</li>`).join('')}
+                    </ul>
+
+                    <div class="fantasy-impact" style="margin-top: 1rem;">
+                        <h5 style="margin: 0 0 0.35rem; color: var(--text-primary);">💡 Fantasy impact</h5>
+                        <p style="color: var(--text-secondary); margin: 0;">${ctx.fantasyImpact}</p>
+                    </div>
+
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 1.25rem;">
+                        Based on ${analysis.gamesAnalyzed} games. Confidence reflects sample size and how
+                        consistent the pattern is - a strong streak over few games still scores lower than a
+                        steady one over many.
+                    </p>
+                </div>
+            </div>
+        `;
+
+        const close = () => this.closeDetailedAnalysis();
+
+        modal.querySelector('.streak-detail-close').addEventListener('click', close);
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+        this._detailEscapeHandler = (e) => { if (e.key === 'Escape') close(); };
+        document.addEventListener('keydown', this._detailEscapeHandler);
+
+        document.body.appendChild(modal);
+    }
+
+    closeDetailedAnalysis() {
+        const modal = document.getElementById('streakDetailModal');
+        if (modal) modal.remove();
+        if (this._detailEscapeHandler) {
+            document.removeEventListener('keydown', this._detailEscapeHandler);
+            this._detailEscapeHandler = null;
         }
     }
 

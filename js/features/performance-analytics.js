@@ -444,6 +444,9 @@ class PerformanceAnalytics {
         const container = document.getElementById('performance-analytics-container');
         if (!container) return;
 
+        // Kept so the export button has something to write out.
+        this.lastAnalysis = analysis;
+
         container.innerHTML = `
             <div class="analytics-header">
                 <h3>📊 Roster Performance Analysis</h3>
@@ -806,7 +809,103 @@ class PerformanceAnalytics {
     }
 
     async exportAnalysis() {
-        this.configManager.showNotification('📄 Analysis export coming soon!', 'info');
+        if (!this.lastAnalysis) {
+            this.configManager.showNotification('❌ Run an analysis first, then export it', 'error');
+            return;
+        }
+
+        try {
+            const csv = this.buildAnalysisCsv(this.lastAnalysis);
+            const week = this.currentWeek || 1;
+            const teamName = (this.configManager.config.teamName || 'my-team')
+                .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+            this.downloadFile(`${teamName}-performance-week-${week}.csv`, csv, 'text/csv;charset=utf-8;');
+
+            this.configManager.showNotification('📄 Analysis exported as CSV', 'success');
+        } catch (error) {
+            console.error('❌ Error exporting analysis:', error);
+            this.configManager.showNotification(`❌ Export failed: ${error.message}`, 'error');
+        }
+    }
+
+    buildAnalysisCsv(analysis) {
+        const summary = analysis.overallSummary || {};
+
+        // Every player the analysis produced, tagged with the bucket it landed in.
+        const buckets = [
+            ['High performer', analysis.highPerformers],
+            ['Breakout candidate', analysis.breakoutCandidates],
+            ['Concerning trend', analysis.concerningTrends],
+            ['Consistent', analysis.consistentPlayers]
+        ];
+
+        const rows = [];
+        buckets.forEach(([label, players]) => {
+            (players || []).forEach(p => {
+                rows.push([
+                    label,
+                    p.player?.name || '',
+                    p.player?.position || '',
+                    p.player?.team || '',
+                    p.averagePoints,
+                    p.recentForm,
+                    p.consistencyScore,
+                    p.performanceRating,
+                    p.trendDirection,
+                    p.breakoutPotential,
+                    p.concernLevel,
+                    (p.insights || []).join('; '),
+                    (p.recommendations || []).join('; ')
+                ]);
+            });
+        });
+
+        const header = [
+            'Category', 'Player', 'Position', 'Team', 'Avg Points', 'Recent Form',
+            'Consistency', 'Performance Rating', 'Trend', 'Breakout Potential',
+            'Concern Level', 'Insights', 'Recommendations'
+        ];
+
+        const meta = [
+            ['Fantasy Football Command Center - Performance Analysis'],
+            ['Generated', new Date().toISOString()],
+            ['League', this.configManager.config.leagueName || ''],
+            ['Team', this.configManager.config.teamName || ''],
+            ['Week', this.currentWeek || ''],
+            ['Scoring', this.configManager.config.scoringFormat || ''],
+            [],
+            ['Roster health score', summary.rosterHealthScore],
+            ['Players analyzed', summary.totalPlayers],
+            ['Average team points', summary.averageTeamPoints],
+            ['High performers', summary.highPerformerCount],
+            ['Breakout candidates', summary.breakoutCandidateCount],
+            ['Concerning players', summary.concerningPlayerCount],
+            []
+        ];
+
+        return [...meta, header, ...rows].map(row => row.map(this.escapeCsv).join(',')).join('\r\n');
+    }
+
+    escapeCsv(value) {
+        if (value === null || value === undefined) return '';
+        const str = String(value);
+        return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+    }
+
+    downloadFile(filename, contents, mimeType) {
+        const blob = new Blob([contents], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Revoke on the next tick so the download has already started.
+        setTimeout(() => URL.revokeObjectURL(url), 0);
     }
 }
 
