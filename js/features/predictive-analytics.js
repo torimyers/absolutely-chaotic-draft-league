@@ -5,10 +5,9 @@
  * pulls from Sleeper. Two distinct predictions:
  *
  *   1. Playoff and championship odds for every team, via Monte Carlo. The
- *      PlayoffSimulator already models a rest-of-season run and a bracket, so
- *      those primitives are reused here rather than reimplemented - the
- *      difference is that this aggregates every team in a single pass instead of
- *      tracking one target team.
+ *      season model and the playoff bracket both live on PlayoffSimulator and
+ *      are driven from here; the only thing this adds is the aggregation, which
+ *      records every team on each pass rather than following one target team.
  *   2. Breakout predictions, scored from player age, experience, depth-chart
  *      position and how hard the league is adding them.
  */
@@ -99,9 +98,9 @@ class PredictiveAnalytics {
      * Plays out the rest of the season many times and records how often each
      * team makes the playoffs and wins it all.
      *
-     * The simulator's own aggregate only follows one team, and counts a finish
-     * solely in the runs where that team reached the bracket. Aggregating every
-     * team here keeps the average finish honest.
+     * The bracket and the rest-of-season model both live on PlayoffSimulator;
+     * this only changes the aggregation, recording every team on each pass
+     * instead of following a single target team.
      */
     runLeagueSimulation(simulator, standings, structure, numSimulations) {
         const tally = {};
@@ -124,7 +123,7 @@ class PredictiveAnalytics {
 
         for (let i = 0; i < numSimulations; i++) {
             const season = simulator.simulateRestOfSeason(standings);
-            const outcome = this.simulateBracket(season, structure);
+            const outcome = simulator.simulatePlayoffs(season, structure);
 
             outcome.forEach(team => {
                 const record = tally[team.rosterId];
@@ -156,96 +155,6 @@ class PredictiveAnalytics {
             projectedWins: record.winsSum / numSimulations,
             averageFinish: record.finishSum / numSimulations
         })).sort((a, b) => b.playoffOdds - a.playoffOdds || b.titleOdds - a.titleOdds);
-    }
-
-    /**
-     * Plays a real single-elimination bracket, so exactly one team wins each
-     * simulated season and the title odds across the league sum to 100%.
-     *
-     * The simulator's own playoff pass rolls each seed's advancement
-     * independently, which is fine for reading one team in isolation but leaves
-     * a large share of seasons with no champion at all once you aggregate every
-     * team - so the league-wide view needs its own bracket.
-     */
-    simulateBracket(seasonStandings, structure) {
-        const field = seasonStandings.slice(0, structure.playoffTeams)
-            .map((team, index) => ({ ...team, playoffSeed: index + 1, madePlayoffs: true }));
-
-        const missed = seasonStandings.slice(structure.playoffTeams)
-            .map((team, index) => ({
-                ...team,
-                madePlayoffs: false,
-                reachedChampionship: false,
-                wonChampionship: false,
-                finalRank: structure.playoffTeams + index + 1
-            }));
-
-        if (!field.length) return missed;
-
-        // Byes sit out the opening round; everyone else pairs highest against lowest.
-        let alive = field.slice(0, structure.firstRoundByes);
-        let playing = field.slice(structure.firstRoundByes);
-        const eliminated = [];
-        let finalists = [];
-
-        while (alive.length + playing.length > 1) {
-            const winners = [];
-
-            for (let i = 0, j = playing.length - 1; i < j; i++, j--) {
-                const [winner, loser] = this.playMatchup(playing[i], playing[j]);
-                winners.push(winner);
-                eliminated.push(loser);
-            }
-
-            // An odd team out advances by default rather than being dropped.
-            if (playing.length % 2 === 1) {
-                winners.push(playing[Math.floor(playing.length / 2)]);
-            }
-
-            // Reseed the survivors for the next round.
-            playing = [...alive, ...winners].sort((a, b) => a.playoffSeed - b.playoffSeed);
-            alive = [];
-
-            if (playing.length === 2) {
-                finalists = [...playing];
-                const [champion, runnerUp] = this.playMatchup(playing[0], playing[1]);
-                eliminated.push(runnerUp);
-                playing = [champion];
-            }
-        }
-
-        const champion = playing[0];
-        const finalistIds = new Set(finalists.map(t => t.rosterId));
-
-        // Losers are ranked by the round they went out in, best seed first.
-        eliminated.reverse();
-
-        const ranked = [
-            { ...champion, reachedChampionship: true, wonChampionship: true, finalRank: 1 },
-            ...eliminated.map((team, index) => ({
-                ...team,
-                reachedChampionship: finalistIds.has(team.rosterId),
-                wonChampionship: false,
-                finalRank: index + 2
-            }))
-        ];
-
-        return [...ranked, ...missed];
-    }
-
-    /**
-     * Decides one playoff game. Scoring average drives the edge, damped so a
-     * strong team is a favourite rather than a certainty - fantasy weeks are
-     * high-variance and even the best roster loses often enough to matter.
-     */
-    playMatchup(teamA, teamB) {
-        const strengthA = Math.max(1, teamA.avgPointsFor || 100);
-        const strengthB = Math.max(1, teamB.avgPointsFor || 100);
-
-        const edge = (strengthA - strengthB) / (strengthA + strengthB);
-        const probA = Math.max(0.25, Math.min(0.75, 0.5 + edge * 1.5));
-
-        return Math.random() < probA ? [teamA, teamB] : [teamB, teamA];
     }
 
     identifyUserRosterId(leagueData) {
