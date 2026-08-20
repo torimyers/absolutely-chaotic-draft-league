@@ -27,10 +27,17 @@ An AI-powered fantasy football draft assistant with real-time Sleeper integratio
 - **Beginner to expert** content progression
 
 ### 🤖 AI Insights
-- **Hot/cold streak analysis** with performance trends
-- **Weather impact predictions** (coming soon)
+- **Hot/cold streak analysis** with performance trends and a full game-by-game breakdown
+- **Weather impact analysis** - forecast conditions at kickoff for every game, and what they do to each position
+- **Season predictions** - playoff and championship odds for every team from 5,000 simulated seasons, plus breakout candidates
 - **Matchup advantages** with win probability
 - **Trade recommendations** based on team needs
+
+### 🔄 In-Season Management
+- **Waiver wire pickups** ranked from league-wide add trends and your roster needs
+- **Drop candidate analysis** scoring who you can safely cut, and why
+- **Lineup optimization** and weekly matchup analysis
+- **Performance analytics** with CSV export
 
 ### 🔗 Sleeper Integration
 - **Auto-import league settings** with one click
@@ -42,7 +49,7 @@ An AI-powered fantasy football draft assistant with real-time Sleeper integratio
 
 - **Frontend**: Vanilla JavaScript with modern ES6+
 - **Styling**: Custom CSS with CSS Grid and Flexbox
-- **API**: Sleeper Fantasy Football API
+- **APIs**: Sleeper (league, rosters, players), Open-Meteo (weather), ESPN (NFL schedule) - all keyless, no signup required
 - **Hosting**: Cloudflare Pages
 - **PWA**: Installable with offline support
 
@@ -126,7 +133,7 @@ The app is fully installable on mobile devices:
 ## 🔒 Privacy & Security
 
 - **No server-side storage** - All data stays in your browser
-- **Secure API calls** - Direct to Sleeper's HTTPS endpoints
+- **Secure API calls** - Direct HTTPS to Sleeper, Open-Meteo and ESPN. No credentials or personal data are sent to any of them; requests carry only a league ID, a week number or a pair of coordinates
 - **No tracking** - No analytics or user tracking
 - **Open source** - Audit the code yourself
 
@@ -147,6 +154,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [Sleeper](https://sleeper.app) for their fantastic API
+- [Open-Meteo](https://open-meteo.com) for free, keyless weather forecasts
+- ESPN for their public NFL scoreboard endpoint
 - The fantasy football community for inspiration
 - All contributors who help improve this tool
 
@@ -155,12 +164,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Panic Mode audio alerts require user interaction to enable (browser limitation)
 - Some older browsers may not support all features
 - Draft tracker requires stable internet connection
+- Weather forecasts only extend ~16 days ahead, so late-season games show conditions closer to kickoff
+- Playoff odds assume each team's scoring average holds; early in the season the sample is small and the numbers move a lot week to week
 
 ## 🚧 Roadmap
 
-- [ ] Weather impact analysis for game day
-- [ ] Trade analyzer with fair value calculations
-- [ ] Waiver wire priority predictions
+- [x] Weather impact analysis for game day
+- [x] Trade analyzer with fair value calculations
+- [x] Waiver wire priority predictions
+- [x] Playoff and championship odds
 - [ ] Dynasty league support
 - [ ] Keeper league tools
 - [ ] Mobile app (React Native)
@@ -174,4 +186,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ for the fantasy football community**
 
-*Not affiliated with Sleeper. This is an independent project that uses their public API.*
+*Not affiliated with Sleeper, Open-Meteo or ESPN. This is an independent project that uses their public APIs.*
