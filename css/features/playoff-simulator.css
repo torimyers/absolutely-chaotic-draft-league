@@ -591,9 +591,6 @@
     from {
         width: 0%;
     }
-    to {
-        width: var(--target-width);
-    }
 }
 
 /* Metric Card Animations */

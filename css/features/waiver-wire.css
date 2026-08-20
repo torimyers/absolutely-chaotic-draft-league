@@ -382,3 +382,18 @@
 .bg-danger {
     background-color: rgba(239, 68, 68, 0.2) !important;
 }
+/* Educational footer shown under drop-candidate analysis */
+.waiver-education {
+    margin-top: var(--space-lg);
+    background: rgba(255, 255, 255, 0.04);
+    border-left: 3px solid var(--primary-color);
+    border-radius: var(--border-radius-sm);
+    padding: var(--space-md);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+}
+
+.waiver-education strong {
+    color: var(--text-primary);
+}

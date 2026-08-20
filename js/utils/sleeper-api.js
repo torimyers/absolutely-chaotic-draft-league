@@ -20,7 +20,7 @@ class SleeperAPI {
         if (useCache && this.cache.has(cacheKey)) {
             const cached = this.cache.get(cacheKey);
             if (Date.now() - cached.timestamp < this.cacheTimeout) {
-                console.log(`=� Using cached data for: ${endpoint}`);
+                console.log(`📦 Using cached data for: ${endpoint}`);
                 return cached.data;
             }
         }
@@ -43,7 +43,7 @@ class SleeperAPI {
             return data;
             
         } catch (error) {
-            console.error(`L Sleeper API Error for ${endpoint}:`, error);
+            console.error(`❌ Sleeper API Error for ${endpoint}:`, error);
             throw error;
         }
     }
@@ -107,7 +107,7 @@ class SleeperAPI {
         if (this.cache.has(cacheKey)) {
             const cached = this.cache.get(cacheKey);
             if (Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
-                console.log('=� Using cached player database');
+                console.log('📦 Using cached player database');
                 return cached.data;
             }
         }
@@ -163,7 +163,7 @@ class SleeperAPI {
      */
     clearCache() {
         this.cache.clear();
-        console.log('>� Sleeper API cache cleared');
+        console.log('🧹 Sleeper API cache cleared');
     }
 
     /**
@@ -184,7 +184,7 @@ class SleeperAPI {
                 success: true
             };
         } catch (error) {
-            console.error('L Error fetching league data:', error);
+            console.error('❌ Error fetching league data:', error);
             return {
                 success: false,
                 error: error.message
@@ -216,7 +216,7 @@ class SleeperAPI {
                 success: true
             };
         } catch (error) {
-            console.error('L Error fetching draft data:', error);
+            console.error('❌ Error fetching draft data:', error);
             return {
                 success: false,
                 error: error.message

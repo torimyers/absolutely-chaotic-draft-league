@@ -14,10 +14,21 @@
     --warning-color: #f39c12;
     --danger-color: #e74c3c;
     
+    --info-color: #45b7d1;
+
+    /* Aliases kept so older stylesheets that reference these names resolve.
+       Without them the declarations were simply dropped by the browser. */
+    --error-color: var(--danger-color);
+
     /* Background Colors */
     --dark-bg: #0c0c1e;
+    --bg-color: var(--dark-bg);
     --card-bg: rgba(255, 255, 255, 0.08);
     --border-color: rgba(255, 255, 255, 0.1);
+
+    /* Dialogs sit above page content, so they need an opaque surface -
+       --card-bg is a translucent glass fill and shows straight through. */
+    --modal-bg: #171733;
     
     /* Text Colors */
     --text-primary: #ffffff;
@@ -36,6 +47,7 @@
     /* Component Spacing */
     --padding-btn: var(--space-sm) var(--space-lg);
     --padding-card: var(--space-lg);
+    --card-padding: var(--padding-card);
     --padding-input: var(--space-sm);
     --margin-section: var(--space-xl);
     
@@ -68,6 +80,7 @@
        LAYOUT SYSTEM
        ======================================== */
     --sidebar-width: 280px;
+    --border-radius-sm: 4px;
     --border-radius: 8px;
     --border-radius-lg: 15px;
     --border-radius-xl: 20px;

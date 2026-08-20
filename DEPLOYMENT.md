@@ -39,36 +39,15 @@ This guide will help you deploy your Fantasy Football Command Center to texasper
 4. Enter `texasperfect.win`
 5. Cloudflare will automatically configure DNS
 
-## Step 2: GitHub Actions Setup (Optional - for automated deployments)
-
-### 2.1 Get Cloudflare API Token
-
-1. Go to Cloudflare Dashboard → My Profile → API Tokens
-2. Click "Create Token"
-3. Use "Custom token" template with these permissions:
-   - Account: Cloudflare Pages:Edit
-   - Zone: Zone:Read
-4. Copy the token
-
-### 2.2 Get Your Account ID
-
-1. Go to any domain in your Cloudflare account
-2. Right sidebar shows "Account ID"
-3. Copy this ID
-
-### 2.3 Add Secrets to GitHub
-
-1. Go to your GitHub repository
-2. Settings → Secrets and variables → Actions
-3. Add these secrets:
-   - `CLOUDFLARE_API_TOKEN`: Your API token from step 2.1
-   - `CLOUDFLARE_ACCOUNT_ID`: Your account ID from step 2.2
-
-## Step 3: Deploy
+## Step 2: Deploy
 
 ### Option A: Automatic Deployment (Recommended)
 - Simply push to the `main` branch
 - Cloudflare Pages will automatically deploy within 1-2 minutes
+
+Deployment is handled by Cloudflare Pages' own Git integration, configured in
+step 1.2. No GitHub Actions workflow, API token or repository secret is needed -
+Cloudflare builds straight from the connected repository.
 
 ### Option B: Manual Deployment
 1. Go to Cloudflare Pages dashboard
@@ -76,7 +55,7 @@ This guide will help you deploy your Fantasy Football Command Center to texasper
 3. Click "Create deployment"
 4. Upload your files or trigger from GitHub
 
-## Step 4: Verify Deployment
+## Step 3: Verify Deployment
 
 1. Visit https://texasperfect.win
 2. Check that:

@@ -148,6 +148,12 @@ class EventManager {
                 case 'run-streak-demo':
                     this.runStreakDemo();
                     break;
+                case 'load-weather':
+                    this.loadWeatherAnalysis();
+                    break;
+                case 'run-predictions':
+                    this.runPredictions();
+                    break;
 
                 // Mobile Actions
                 case 'toggle-mobile-menu':
@@ -604,6 +610,22 @@ class EventManager {
         setTimeout(() => {
             this.showNotification('💡 AI Insights will be fully available after configuring your league and connecting Sleeper', 'info', 5000);
         }, 2000);
+    }
+
+    loadWeatherAnalysis() {
+        if (!window.weatherAnalyzer) {
+            this.showNotification('❌ Weather analyzer not available', 'error');
+            return;
+        }
+        window.weatherAnalyzer.loadWeatherAnalysis();
+    }
+
+    runPredictions() {
+        if (!window.predictiveAnalytics) {
+            this.showNotification('❌ Predictive analytics not available', 'error');
+            return;
+        }
+        window.predictiveAnalytics.runPredictions();
     }
 
     handleStreakAnalysis() {

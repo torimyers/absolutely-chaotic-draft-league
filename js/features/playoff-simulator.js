@@ -255,8 +255,12 @@ class PlayoffSimulator {
             results.finishDistribution[finish] = (results.finishDistribution[finish] / numSimulations) * 100;
         });
 
+        // Seed shares are conditional on making the playoffs at all, so a team
+        // that never got there would otherwise divide by zero and report NaN.
         Object.keys(results.seedDistribution).forEach(seed => {
-            results.seedDistribution[seed] = (results.seedDistribution[seed] / results.playoffAppearances) * 100;
+            results.seedDistribution[seed] = results.playoffAppearances
+                ? (results.seedDistribution[seed] / results.playoffAppearances) * 100
+                : 0;
         });
 
         return results;
@@ -301,82 +305,101 @@ class PlayoffSimulator {
         return wins;
     }
 
+    /**
+     * Plays a real single-elimination bracket: byes sit out the opening round,
+     * survivors are reseeded each round, and exactly one team is left standing.
+     *
+     * This previously rolled each seed's advancement independently against a
+     * per-seed probability table. That let a single simulated season produce two
+     * champions, or none at all - across a whole league the championship odds
+     * summed to roughly 82% rather than 100%. It also handed playoff losers a
+     * finalRank of seed + 2, which collided with the ranks given to teams that
+     * missed the playoffs, so the finishing order was not a permutation.
+     *
+     * Returns every team, playoff and non-playoff alike, so callers can look up
+     * any roster and read a finishing rank from it.
+     */
     simulatePlayoffs(seasonStandings, playoffStructure) {
-        const playoffTeams = seasonStandings.slice(0, playoffStructure.playoffTeams);
-        
-        return playoffTeams.map((team, index) => {
-            const seed = index + 1;
-            let reachedChampionship = false;
-            let wonChampionship = false;
-            
-            // Simulate playoff run based on seed and team strength
-            const playoffAdvanceProb = this.calculatePlayoffAdvanceProb(team, seed, playoffStructure);
-            
-            if (seed <= 2 && playoffStructure.firstRoundByes > 0) {
-                // First round bye
-                if (Math.random() < playoffAdvanceProb.semifinals) {
-                    if (Math.random() < playoffAdvanceProb.championship) {
-                        reachedChampionship = true;
-                        if (Math.random() < playoffAdvanceProb.win) {
-                            wonChampionship = true;
-                        }
-                    }
-                }
-            } else {
-                // Play from first round
-                if (Math.random() < playoffAdvanceProb.wildcard) {
-                    if (Math.random() < playoffAdvanceProb.semifinals) {
-                        if (Math.random() < playoffAdvanceProb.championship) {
-                            reachedChampionship = true;
-                            if (Math.random() < playoffAdvanceProb.win) {
-                                wonChampionship = true;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            return {
-                ...team,
-                madePlayoffs: true,
-                playoffSeed: seed,
-                reachedChampionship,
-                wonChampionship,
-                finalRank: wonChampionship ? 1 : reachedChampionship ? 2 : seed + 2
-            };
-        }).concat(
-            // Non-playoff teams
-            seasonStandings.slice(playoffStructure.playoffTeams).map((team, index) => ({
+        const field = seasonStandings.slice(0, playoffStructure.playoffTeams)
+            .map((team, index) => ({ ...team, playoffSeed: index + 1, madePlayoffs: true }));
+
+        const missed = seasonStandings.slice(playoffStructure.playoffTeams)
+            .map((team, index) => ({
                 ...team,
                 madePlayoffs: false,
+                reachedChampionship: false,
+                wonChampionship: false,
                 finalRank: playoffStructure.playoffTeams + index + 1
+            }));
+
+        if (!field.length) return missed;
+
+        let alive = field.slice(0, playoffStructure.firstRoundByes);
+        let playing = field.slice(playoffStructure.firstRoundByes);
+        const eliminated = [];
+        let finalists = [];
+
+        while (alive.length + playing.length > 1) {
+            const winners = [];
+
+            // Pair highest remaining seed against lowest.
+            for (let i = 0, j = playing.length - 1; i < j; i++, j--) {
+                const [winner, loser] = this.playMatchup(playing[i], playing[j]);
+                winners.push(winner);
+                eliminated.push(loser);
+            }
+
+            // An odd team out advances by default rather than being dropped.
+            if (playing.length % 2 === 1) {
+                winners.push(playing[Math.floor(playing.length / 2)]);
+            }
+
+            playing = [...alive, ...winners].sort((a, b) => a.playoffSeed - b.playoffSeed);
+            alive = [];
+
+            if (playing.length === 2) {
+                finalists = [...playing];
+                const [champion, runnerUp] = this.playMatchup(playing[0], playing[1]);
+                eliminated.push(runnerUp);
+                playing = [champion];
+            }
+        }
+
+        const champion = playing[0];
+        const finalistIds = new Set(finalists.map(t => t.rosterId));
+
+        // Losers rank by the round they went out in, latest exits first.
+        eliminated.reverse();
+
+        const ranked = [
+            { ...champion, reachedChampionship: true, wonChampionship: true, finalRank: 1 },
+            ...eliminated.map((team, index) => ({
+                ...team,
+                reachedChampionship: finalistIds.has(team.rosterId),
+                wonChampionship: false,
+                finalRank: index + 2
             }))
-        );
+        ];
+
+        return [...ranked, ...missed];
     }
 
-    calculatePlayoffAdvanceProb(team, seed, playoffStructure) {
-        // Base probabilities by seed
-        const baseProbabilities = {
-            1: { wildcard: 0.85, semifinals: 0.75, championship: 0.65, win: 0.55 },
-            2: { wildcard: 0.80, semifinals: 0.70, championship: 0.60, win: 0.50 },
-            3: { wildcard: 0.70, semifinals: 0.55, championship: 0.45, win: 0.40 },
-            4: { wildcard: 0.65, semifinals: 0.50, championship: 0.40, win: 0.35 },
-            5: { wildcard: 0.50, semifinals: 0.35, championship: 0.25, win: 0.20 },
-            6: { wildcard: 0.45, semifinals: 0.30, championship: 0.20, win: 0.15 }
-        };
-        
-        let probs = baseProbabilities[seed] || baseProbabilities[6];
-        
-        // Adjust based on team performance
-        const performanceMultiplier = team.avgPointsFor > 115 ? 1.15 : 
-                                    team.avgPointsFor < 95 ? 0.85 : 1.0;
-        
-        return {
-            wildcard: Math.min(0.95, probs.wildcard * performanceMultiplier),
-            semifinals: Math.min(0.90, probs.semifinals * performanceMultiplier),
-            championship: Math.min(0.85, probs.championship * performanceMultiplier),
-            win: Math.min(0.80, probs.win * performanceMultiplier)
-        };
+    /**
+     * Decides one playoff game. Scoring average drives the edge, damped so a
+     * strong team is a favourite rather than a certainty - fantasy weeks are
+     * high-variance and even the best roster loses often enough to matter.
+     *
+     * Seeding advantage is not applied on top of this: it already emerges from
+     * the bracket, where a high seed skips a round or faces a weaker opponent.
+     */
+    playMatchup(teamA, teamB) {
+        const strengthA = Math.max(1, teamA.avgPointsFor || 100);
+        const strengthB = Math.max(1, teamB.avgPointsFor || 100);
+
+        const edge = (strengthA - strengthB) / (strengthA + strengthB);
+        const probA = Math.max(0.25, Math.min(0.75, 0.5 + edge * 1.5));
+
+        return Math.random() < probA ? [teamA, teamB] : [teamB, teamA];
     }
 
     calculateChampionshipOdds(simResults, targetTeam) {

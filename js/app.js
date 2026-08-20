@@ -1,7 +1,7 @@
 // Fantasy Football App - Main Application Entry Point (Refactored with EventManager)
 
 // Application managers
-let configManager, navigationManager, learningManager, draftTracker, eventManager, teamManager, waiverWireManager, performanceAnalytics, leagueAnalyzer, tradeAnalyzer, playoffSimulator;
+let configManager, navigationManager, learningManager, draftTracker, eventManager, teamManager, waiverWireManager, performanceAnalytics, leagueAnalyzer, tradeAnalyzer, playoffSimulator, weatherAnalyzer, predictiveAnalytics;
 
 // Initialize app components
 document.addEventListener('DOMContentLoaded', function() {
@@ -49,6 +49,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 playoffSimulator = new PlayoffSimulator(configManager);
                 await playoffSimulator.initialize();
                 console.log('✅ Playoff simulator initialized');
+
+                // Initialize weather analyzer
+                weatherAnalyzer = new WeatherAnalyzer(configManager);
+                await weatherAnalyzer.initialize();
+                console.log('✅ Weather analyzer initialized');
+
+                // Initialize predictive analytics
+                predictiveAnalytics = new PredictiveAnalytics(configManager);
+                await predictiveAnalytics.initialize();
+                console.log('✅ Predictive analytics initialized');
                 
                 // Initialize EventManager last - it needs all other managers
                 eventManager = new EventManager(
@@ -75,6 +85,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.leagueAnalyzer = leagueAnalyzer;
                 window.tradeAnalyzer = tradeAnalyzer;
                 window.playoffSimulator = playoffSimulator;
+                window.weatherAnalyzer = weatherAnalyzer;
+                window.predictiveAnalytics = predictiveAnalytics;
                 window.eventManager = eventManager;
                 
             } catch (error) {
