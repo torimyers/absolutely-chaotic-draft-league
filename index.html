@@ -34,6 +34,8 @@
     <link rel="stylesheet" href="css/features/analytics.css">
     <link rel="stylesheet" href="css/features/trade-analyzer.css">
     <link rel="stylesheet" href="css/features/playoff-simulator.css">
+    <link rel="stylesheet" href="css/features/weather.css">
+    <link rel="stylesheet" href="css/features/predictions.css">
 </head>
 <body data-theme="teal">
     <!-- Configuration Panel -->
@@ -437,30 +439,43 @@
                         </div>
                     </div>
 
-                    <!-- Weather Analysis Tab Content (Placeholder) -->
+                    <!-- Weather Analysis Tab Content -->
                     <div class="tab-content" id="weather-analysis-tab">
-                        <div class="card">
-                            <div class="empty-state">
-                                <div class="icon">🌦️</div>
-                                <h3>Weather Impact Analysis</h3>
-                                <p>
-                                    Real-time weather analysis for game-day decisions. 
-                                    Coming soon in the next update!
-                                </p>
+                        <div id="weather-analysis-container">
+                            <div class="card">
+                                <div class="empty-state">
+                                    <div class="icon">🌦️</div>
+                                    <h3>Weather Impact Analysis</h3>
+                                    <p>
+                                        Forecast conditions at kickoff for every game this week, with the
+                                        positions each one actually affects. Wind, rain and cold move fantasy
+                                        scoring in different directions - this shows which of your players
+                                        are exposed.
+                                    </p>
+                                    <button class="btn btn-primary" data-action="load-weather" id="loadWeatherBtn" style="margin-top: 15px;">
+                                        <span>🌦️</span> Check This Week's Weather
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Predictive Analytics Tab Content (Placeholder) -->
+                    <!-- Predictive Analytics Tab Content -->
                     <div class="tab-content" id="predictive-analytics-tab">
-                        <div class="card">
-                            <div class="empty-state">
-                                <div class="icon">📈</div>
-                                <h3>Predictive Analytics</h3>
-                                <p>
-                                    Breakout predictions, playoff probabilities, and championship odds. 
-                                    Coming soon in the next update!
-                                </p>
+                        <div id="predictive-analytics-container">
+                            <div class="card">
+                                <div class="empty-state">
+                                    <div class="icon">📈</div>
+                                    <h3>Predictive Analytics</h3>
+                                    <p>
+                                        Simulates the rest of your season thousands of times to work out every
+                                        team's playoff and championship odds, then scores the players most
+                                        likely to break out before the rest of your league notices.
+                                    </p>
+                                    <button class="btn btn-primary" data-action="run-predictions" id="runPredictionsBtn" style="margin-top: 15px;">
+                                        <span>📈</span> Run Predictions
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -631,6 +646,8 @@
     <script src="js/features/league-analyzer.js"></script>
     <script src="js/features/trade-analyzer.js"></script>
     <script src="js/features/playoff-simulator.js"></script>
+    <script src="js/features/weather-analyzer.js"></script>
+    <script src="js/features/predictive-analytics.js"></script>
     <script src="js/utils/sleeper-api.js"></script>
 
     <!-- Main App -->

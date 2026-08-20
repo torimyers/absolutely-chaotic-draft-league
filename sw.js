@@ -16,6 +16,8 @@ const PRECACHE_URLS = [
   './css/features/analytics.css',
   './css/features/trade-analyzer.css',
   './css/features/playoff-simulator.css',
+  './css/features/weather.css',
+  './css/features/predictions.css',
   './css/core/variables.css',
   './css/core/reset.css',
   './css/core/base.css',
@@ -51,8 +53,14 @@ const PRECACHE_URLS = [
   './js/features/league-analyzer.js',
   './js/features/trade-analyzer.js',
   './js/features/playoff-simulator.js',
+  './js/features/weather-analyzer.js',
+  './js/features/predictive-analytics.js',
   './js/utils/sleeper-api.js',
   './js/app.js',
+  './icons/icon-96.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon.svg',
 ];
 
 // Requests we must never serve from cache: live fantasy data and weather forecasts.

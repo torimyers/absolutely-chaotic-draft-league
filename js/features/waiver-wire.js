@@ -526,7 +526,7 @@ class WaiverWireManager {
 
         if (!candidates.list.length) {
             container.innerHTML = `
-                <div class="waiver-header">
+                <div class="recommendations-header">
                     <h4>📉 Drop Candidates</h4>
                     <p>Reviewed all ${candidates.reviewed} players on your roster</p>
                 </div>
@@ -545,20 +545,21 @@ class WaiverWireManager {
         }
 
         container.innerHTML = `
-            <div class="waiver-header">
+            <div class="recommendations-header">
                 <h4>📉 Drop Candidates</h4>
                 <p>Ranked by how safely you can cut them - reviewed ${candidates.reviewed} rostered players</p>
             </div>
 
-            <div class="waiver-recommendations-grid">
+            <div class="waiver-grid">
                 ${candidates.list.map(c => `
-                    <div class="waiver-recommendation priority-${c.severity}">
-                        <div class="waiver-player-header">
+                    <div class="waiver-card priority-${c.severity}">
+                        <div class="waiver-header">
                             <div class="player-info">
-                                <h5>${c.name} ${c.isStarter ? '<span class="starter-flag">STARTER</span>' : ''}</h5>
-                                <span class="player-meta">${c.position} - ${c.team}</span>
+                                <div class="player-name">${c.name}</div>
+                                <div class="player-details">${c.position} - ${c.team}</div>
+                                ${c.isStarter ? '<div class="injury-tag">STARTER</div>' : ''}
                             </div>
-                            <span class="priority-badge priority-${c.severity}">${c.severity.toUpperCase()}</span>
+                            <div class="priority-badge ${c.severity}">${c.severity.toUpperCase()}</div>
                         </div>
 
                         <div class="waiver-stats">

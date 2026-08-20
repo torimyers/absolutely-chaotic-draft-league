@@ -1,0 +1,187 @@
+/* Predictive Analytics - AI Insights tab */
+
+.prediction-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.prediction-header h3 {
+    margin: 0 0 var(--space-xs);
+    color: var(--text-primary);
+}
+
+.prediction-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.prediction-section-title {
+    margin: var(--space-xl) 0 var(--space-md);
+    color: var(--text-primary);
+}
+
+/* The user's own team, pulled out above the league table */
+.prediction-mine {
+    background: rgba(78, 205, 196, 0.08);
+    border: 1px solid rgba(78, 205, 196, 0.3);
+    border-radius: var(--card-border-radius);
+    padding: var(--padding-card);
+    margin-bottom: var(--space-lg);
+}
+
+.prediction-mine h4 {
+    margin: 0 0 var(--space-md);
+    color: var(--text-primary);
+}
+
+.prediction-mine-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
+.prediction-verdict {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+}
+
+.prediction-empty {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+/* League-wide odds table */
+.prediction-table-wrap {
+    overflow-x: auto;
+}
+
+.prediction-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+    min-width: 560px;
+}
+
+.prediction-table th {
+    text-align: left;
+    padding: var(--space-sm);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-medium);
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.prediction-table td {
+    padding: var(--space-sm);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.prediction-table tr.is-mine {
+    background: rgba(78, 205, 196, 0.1);
+}
+
+.you-flag {
+    background: var(--primary-color);
+    color: #0c0c1e;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    border-radius: var(--border-radius-sm);
+    padding: 0.1rem 0.35rem;
+    margin-left: var(--space-xs);
+}
+
+/* Probability bars sit behind the figure so both read at a glance */
+.odds-bar {
+    position: relative;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius-sm);
+    min-width: 90px;
+    height: 1.4rem;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.odds-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    border-radius: var(--border-radius-sm);
+}
+
+.odds-fill.playoffs { background: rgba(78, 205, 196, 0.45); }
+.odds-fill.title { background: rgba(243, 156, 18, 0.5); }
+
+.odds-bar span {
+    position: relative;
+    padding: 0 var(--space-sm);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+/* Breakout candidates */
+.breakout-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--grid-gap-sm);
+}
+
+.breakout-card {
+    background: var(--card-bg);
+    border: var(--card-border);
+    border-left: 4px solid var(--border-color);
+    border-radius: var(--card-border-radius);
+    padding: var(--padding-card);
+}
+
+.breakout-card.tier-strong { border-left-color: var(--success-color); }
+.breakout-card.tier-promising { border-left-color: var(--info-color); }
+.breakout-card.tier-speculative { border-left-color: var(--warning-color); }
+
+.breakout-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.breakout-head strong {
+    display: block;
+    color: var(--text-primary);
+}
+
+.breakout-meta {
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+}
+
+.breakout-score {
+    color: var(--primary-color);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-lg);
+    white-space: nowrap;
+}
+
+.breakout-reason {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+}
+
+@media (max-width: 768px) {
+    .breakout-grid { grid-template-columns: 1fr; }
+}
