@@ -1,18 +1,15 @@
-name = "fantasy-football-app"
+# Cloudflare Pages project config.
+#
+# The site normally deploys through Cloudflare Pages' Git integration, which
+# reads its settings from the dashboard rather than this file. This exists so a
+# manual `wrangler pages deploy` targets the right project instead of creating
+# a new one.
+#
+# HTTP headers are NOT configured here - Pages serves them from `_headers`,
+# which is the single source of truth and carries the Content-Security-Policy.
+
+name = "absolutely-chaotic-draft-league"
 compatibility_date = "2024-01-01"
 
-[site]
-bucket = "./"
-
-[env.production]
-route = "texasperfect.win/*"
-
-[build]
-command = ""
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-Content-Type-Options = "nosniff"
-    X-XSS-Protection = "1; mode=block"
+# Static site, no build step: the repository root is what gets served.
+pages_build_output_dir = "."
