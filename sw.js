@@ -44,6 +44,7 @@ const PRECACHE_URLS = [
   './js/core/navigation-manager.js',
   './js/core/learning-manager.js',
   './js/core/event-manager.js',
+  './js/features/pick-advisor.js',
   './js/features/draft-tracker.js',
   './js/features/streak-analyzer.js',
   './js/features/team-manager.js',
