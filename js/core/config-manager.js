@@ -22,13 +22,77 @@ class ConfigManager {
             
             // App Settings
             sleeperLeagueId: "",
+            sleeperDraftId: null,
             learningMode: "beginner",
             themeColor: "teal",
-            
+
             // Status flags
             isConfigured: false,
-            draftCompleted: false
+            draftCompleted: false,
+            isMockDraft: false
         };
+    }
+
+    /**
+     * Works out what the user actually pasted into the league field. Sleeper
+     * league IDs and draft IDs look identical on their own, so the only reliable
+     * signal is the URL they came from.
+     *
+     * Returns { kind: 'league' | 'draft' | 'empty' | 'invalid', id }.
+     */
+    parseSleeperInput(raw) {
+        const value = String(raw == null ? '' : raw).trim();
+
+        if (!value) return { kind: 'empty', id: null };
+
+        // https://sleeper.com/draft/nfl/1234567890
+        const draftUrl = value.match(/draft\/(?:nfl\/)?(\d+)/i);
+        if (draftUrl) return { kind: 'draft', id: draftUrl[1] };
+
+        // https://sleeper.com/leagues/1234567890/team
+        const leagueUrl = value.match(/leagues?\/(\d+)/i);
+        if (leagueUrl) return { kind: 'league', id: leagueUrl[1] };
+
+        // A bare ID is ambiguous; the field is labelled League ID, so treat it as one.
+        const bare = value.match(/^(\d{6,})$/);
+        if (bare) return { kind: 'league', id: bare[1] };
+
+        return { kind: 'invalid', id: null };
+    }
+
+    /**
+     * Forces sleeperLeagueId / sleeperDraftId / isMockDraft into a consistent
+     * state. Only one of the two IDs may be set at a time.
+     *
+     * These flags used to be written when a mock draft URL was pasted and then
+     * never cleared, so entering a real league afterwards left isMockDraft true
+     * and the tracker kept polling the old mock draft, ignoring the league
+     * entirely. This is called on load and on save so stale state cannot survive.
+     */
+    normalizeSleeperTarget(config) {
+        const leagueId = config.sleeperLeagueId ? String(config.sleeperLeagueId).trim() : '';
+        const draftId = config.sleeperDraftId ? String(config.sleeperDraftId).trim() : '';
+
+        // Legacy configs stored the draft ID in BOTH fields; that means mock draft.
+        if (draftId && leagueId === draftId) {
+            config.sleeperLeagueId = '';
+            config.sleeperDraftId = draftId;
+            config.isMockDraft = true;
+            return config;
+        }
+
+        // A real league ID is the user's current intent - drop any stale mock state.
+        if (leagueId) {
+            config.sleeperLeagueId = leagueId;
+            config.sleeperDraftId = null;
+            config.isMockDraft = false;
+            return config;
+        }
+
+        config.sleeperLeagueId = '';
+        config.sleeperDraftId = draftId || null;
+        config.isMockDraft = Boolean(draftId);
+        return config;
     }
 
     async loadConfiguration() {
@@ -37,6 +101,8 @@ class ConfigManager {
         if (saved) {
             try {
                 this.config = { ...this.config, ...JSON.parse(saved) };
+                // Repairs profiles saved before the mock-draft flags were cleared properly.
+                this.normalizeSleeperTarget(this.config);
             } catch (e) {
                 console.warn('Could not load saved configuration, using defaults');
             }
@@ -108,48 +174,49 @@ class ConfigManager {
         const leagueIdInput = document.getElementById('sleeperLeagueId');
         let leagueId = leagueIdInput ? leagueIdInput.value.trim() : this.config.sleeperLeagueId;
         
-        // Check if this is a draft URL or just contains 'draft'
-        if (leagueId.includes('draft')) {
-            this.showNotification('📋 Detected mock draft URL! For mock drafts, skip configuration and go directly to Live Draft tracking.', 'warning');
-            
-            // Extract draft ID if it's a full URL
-            const draftMatch = leagueId.match(/draft\/nfl\/(\d+)/);
-            if (draftMatch) {
-                const draftId = draftMatch[1];
-                console.log('📋 Extracted draft ID:', draftId);
-                // Store as draft ID, not league ID
-                this.config.sleeperDraftId = draftId;
-                this.config.sleeperLeagueId = null; // Clear league ID for mock drafts
-                this.config.isMockDraft = true;
-                
-                // Update the form to show the draft ID
-                this.updateFormFields({
-                    sleeperLeagueId: draftId
-                });
-                
-                // Auto-fill for mock draft
-                this.updateFormFields({
-                    leagueName: 'Mock Draft',
-                    teamName: 'My Mock Team',
-                    leagueSize: 12,
-                    scoringFormat: 'Half PPR'
-                });
-                
-                this.showNotification('✅ Mock draft configured! Go to Live Draft page to start tracking.', 'success');
-                this.config.isConfigured = true;
-                return true;
-            }
-        }
-        
-        console.log('📋 League ID:', leagueId);
-        
-        if (!leagueId) {
+        const parsed = this.parseSleeperInput(leagueId);
+
+        if (parsed.kind === 'empty') {
             this.showNotification('❌ Please enter a Sleeper League ID first', 'error');
             return false;
         }
-        
-        // Update config with the league ID
+
+        if (parsed.kind === 'invalid') {
+            this.showNotification('❌ That does not look like a Sleeper League ID or draft link. Paste the ID, or the URL from your league or draft page.', 'error');
+            return false;
+        }
+
+        if (parsed.kind === 'draft') {
+            const draftId = parsed.id;
+            console.log('📋 Extracted draft ID:', draftId);
+
+            this.config.sleeperDraftId = draftId;
+            this.config.sleeperLeagueId = '';
+            this.config.isMockDraft = true;
+
+            // The pasted draft URL is deliberately left in the field. Writing the
+            // bare ID back made it indistinguishable from a league ID, so saving
+            // reclassified it as one and the draft target was lost.
+            this.updateFormFields({
+                leagueName: 'Mock Draft',
+                teamName: 'My Mock Team',
+                leagueSize: 12,
+                scoringFormat: 'Half PPR'
+            });
+
+            this.showNotification('✅ Mock draft configured! Go to Live Draft page to start tracking.', 'success');
+            this.config.isConfigured = true;
+            return true;
+        }
+
+        // A real league: adopt the parsed ID and drop any leftover mock-draft target.
+        leagueId = parsed.id;
+        console.log('📋 League ID:', leagueId);
+
         this.config.sleeperLeagueId = leagueId;
+        this.config.sleeperDraftId = null;
+        this.config.isMockDraft = false;
+        this.updateFormFields({ sleeperLeagueId: leagueId });
         
         // Save username from form before API call
         const usernameInput = document.getElementById('sleeperUserName');
@@ -170,6 +237,11 @@ class ConfigManager {
             
             // Check if league exists
             if (!leagueResponse.ok) {
+                // Sleeper league IDs and draft IDs are the same shape, so a bare ID
+                // is genuinely ambiguous. Before giving up, see if it is a draft.
+                const resolvedAsDraft = await this.tryResolveAsDraft(leagueId);
+                if (resolvedAsDraft) return true;
+
                 throw new Error(`League not found. Status: ${leagueResponse.status}`);
             }
             
@@ -276,6 +348,58 @@ class ConfigManager {
             }
             
             this.showNotification(errorMessage, 'error');
+            return false;
+        }
+    }
+
+    /**
+     * Last resort when an ID does not resolve as a league: check whether it is a
+     * draft ID instead. A draft that belongs to a league is adopted as that
+     * league so rosters and turn detection still work; a draft with no league is
+     * a mock draft.
+     */
+    async tryResolveAsDraft(id) {
+        // Adopting a draft's league re-enters loadFromSleeper. Remember what has
+        // already been tried so a self-referential ID cannot loop.
+        this._triedSleeperIds = this._triedSleeperIds || new Set();
+        if (this._triedSleeperIds.has(String(id))) return false;
+        this._triedSleeperIds.add(String(id));
+
+        try {
+            const response = await fetch(`https://api.sleeper.app/v1/draft/${id}`);
+            if (!response.ok) return false;
+
+            const draft = await response.json();
+            if (!draft || !draft.draft_id) return false;
+
+            if (draft.league_id) {
+                console.log('📋 ID was a league draft; adopting league', draft.league_id);
+                this.config.sleeperLeagueId = String(draft.league_id);
+                this.config.sleeperDraftId = null;
+                this.config.isMockDraft = false;
+                this.updateFormFields({ sleeperLeagueId: this.config.sleeperLeagueId });
+                this.showNotification('📋 That was a draft link - loading the league it belongs to...', 'info');
+                return await this.loadFromSleeper();
+            }
+
+            console.log('📋 ID resolved as a mock draft:', draft.draft_id);
+            this.config.sleeperDraftId = String(draft.draft_id);
+            this.config.sleeperLeagueId = '';
+            this.config.isMockDraft = true;
+            this.config.isConfigured = true;
+
+            this.updateFormFields({
+                leagueName: 'Mock Draft',
+                teamName: 'My Mock Team',
+                leagueSize: (draft.settings && draft.settings.teams) || 12,
+                scoringFormat: this.config.scoringFormat || 'Half PPR'
+            });
+
+            this.showNotification('✅ That ID is a mock draft, not a league. Configured - go to Live Draft to start tracking.', 'success');
+            return true;
+
+        } catch (error) {
+            console.warn('Draft fallback failed:', error);
             return false;
         }
     }
@@ -614,13 +738,34 @@ class ConfigManager {
             newConfig.sleeperUsername = this.config.sleeperUsername;
         }
 
+        // The form has one box for both league IDs and draft links, so re-read it
+        // here rather than trusting whatever the field happens to hold.
+        if (Object.prototype.hasOwnProperty.call(newConfig, 'sleeperLeagueId')) {
+            const parsed = this.parseSleeperInput(newConfig.sleeperLeagueId);
+
+            if (parsed.kind === 'draft') {
+                newConfig.sleeperLeagueId = '';
+                newConfig.sleeperDraftId = parsed.id;
+                newConfig.isMockDraft = true;
+            } else if (parsed.kind === 'league') {
+                newConfig.sleeperLeagueId = parsed.id;
+                newConfig.sleeperDraftId = null;
+                newConfig.isMockDraft = false;
+            } else {
+                // Nothing usable typed - keep whatever the popup already resolved.
+                delete newConfig.sleeperLeagueId;
+            }
+        }
+
         // Merge with existing config
-        this.config = { 
-            ...this.config, 
+        this.config = {
+            ...this.config,
             ...newConfig,
             isConfigured: true,
             lastUpdated: new Date().toISOString()
         };
+
+        this.normalizeSleeperTarget(this.config);
 
         // Save to localStorage with error handling
         try {
@@ -873,7 +1018,14 @@ class ConfigManager {
                 warning: '⚠️',
                 info: 'ℹ️'
             };
-            
+
+            // Most callers already lead with a status emoji. The panel adds its own,
+            // so drop a leading duplicate rather than rendering "❌ ❌ ...".
+            const withoutLeadingIcon = String(message).replace(/^\s*(?:\p{Extended_Pictographic}|️|‍)+\s*/u, '');
+            if (withoutLeadingIcon) {
+                message = withoutLeadingIcon;
+            }
+
             notification.innerHTML = `
                 <div style="display: flex; align-items: flex-start; gap: 10px;">
                     <span style="font-size: 1.2em;">${icons[type]}</span>
@@ -889,13 +1041,23 @@ class ConfigManager {
             
             // Click to dismiss
             notification.addEventListener('click', () => notification.remove());
-            
+
             document.body.appendChild(notification);
-            
+
+            // The bare .notification rule is a hidden state - translateX(100%),
+            // opacity 0, pointer-events none - and .show is what reveals it.
+            // Without this class every toast was built off-screen and invisible,
+            // sat out its whole lifetime there, and only became briefly visible
+            // during the slide-out animation as it was removed. That made the app
+            // look silent while it was in fact reporting errors the entire time,
+            // and made "click to dismiss" impossible.
+            requestAnimationFrame(() => notification.classList.add('show'));
+
             // Auto-dismiss after duration
             setTimeout(() => {
                 if (notification.parentNode) {
-                    notification.style.animation = 'slideOutRight 0.3s ease';
+                    notification.classList.remove('show');
+                    notification.classList.add('hide');
                     setTimeout(() => notification.remove(), 300);
                 }
             }, duration);
