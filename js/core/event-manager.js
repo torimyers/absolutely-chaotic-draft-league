@@ -148,6 +148,13 @@ class EventManager {
                 case 'run-streak-demo':
                     this.runStreakDemo();
                     break;
+                case 'export-app-data':
+                    this.configManager.exportAppData();
+                    break;
+                case 'import-app-data':
+                    this.configManager.importAppData();
+                    break;
+
                 case 'load-weather':
                     this.loadWeatherAnalysis();
                     break;

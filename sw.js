@@ -1,7 +1,7 @@
 // Service Worker for Fantasy Football Command Center
 // Enables offline functionality and PWA features
 
-const CACHE_NAME = 'fantasy-football-v2';
+const CACHE_NAME = 'fantasy-football-v3';
 
 // App shell. Every entry is verified to exist in the repo - a missing file would
 // make cache.addAll() reject and abort the whole install, which is what silently
@@ -113,6 +113,29 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
+  // Application code is network-first. These filenames carry no content hash, so
+  // serving a cached copy first means a deploy takes an extra load to reach the
+  // user - and running a stale bundle silently is worse than a slower start.
+  const isAppCode = /\.(?:js|css)$/i.test(url.pathname);
+
+  if (isAppCode) {
+    event.respondWith(
+      fetch(request)
+        .then(function(response) {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(function(cache) { cache.put(request, copy); });
+          }
+          return response;
+        })
+        .catch(function() {
+          return caches.match(request);
+        })
+    );
+    return;
+  }
+
+  // Everything else (icons, manifest) is stale-while-revalidate.
   event.respondWith(
     caches.match(request).then(function(cached) {
       const network = fetch(request).then(function(response) {
