@@ -4,6 +4,7 @@
 class DraftTracker {
     constructor(configManager) {
         this.configManager = configManager;
+        this.sleeperAPI = new SleeperAPI();
         this.draftId = null;
         this.draftData = null;
         this.picks = [];
@@ -67,10 +68,11 @@ class DraftTracker {
 
     async loadPlayerDatabase() {
         try {
-            // Fetch current NFL players from Sleeper
-            const playersResponse = await fetch('https://api.sleeper.app/v1/players/nfl');
-            const players = await playersResponse.json();
-            
+            // Routed through SleeperAPI rather than a bare fetch so this shares the
+            // cache and in-flight request with every other feature. This is the
+            // ~5 MB player dump, and several managers ask for it at startup.
+            const players = await this.sleeperAPI.getAllPlayers();
+
             // Process and store player data
             Object.entries(players).forEach(([playerId, player]) => {
                 // Better filtering for fantasy-relevant players

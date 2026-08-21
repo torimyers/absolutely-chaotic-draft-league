@@ -1116,6 +1116,122 @@ class ConfigManager {
     }
 
     // NEW: Reset configuration (useful for testing)
+    /**
+     * The complete set of keys this app owns. Everything else it displays -
+     * players, rosters, picks, standings - belongs to Sleeper and is refetched,
+     * so a backup only needs to carry these.
+     */
+    getPersistedKeys() {
+        return ['fantasyAppConfig', 'draftPlan', 'conceptsLearned'];
+    }
+
+    /**
+     * Writes local app data to a JSON file. Nothing is uploaded - the file is
+     * produced in the browser and saved to disk.
+     *
+     * Note the file contains your draft plan in plain text, which is exactly the
+     * information you would not want a league mate to read.
+     */
+    exportAppData() {
+        try {
+            const data = {};
+            let found = 0;
+
+            this.getPersistedKeys().forEach(key => {
+                const raw = localStorage.getItem(key);
+                if (raw === null) return;
+                found++;
+                // Store parsed JSON where possible so the file stays readable.
+                try {
+                    data[key] = JSON.parse(raw);
+                } catch (e) {
+                    data[key] = raw;
+                }
+            });
+
+            if (!found) {
+                this.showNotification('Nothing to export yet - configure your league first', 'warning');
+                return false;
+            }
+
+            const payload = {
+                app: 'fantasy-football-command-center',
+                formatVersion: 1,
+                exportedAt: new Date().toISOString(),
+                data
+            };
+
+            const teamName = (this.config.teamName || 'fantasy')
+                .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'fantasy';
+            const stamp = new Date().toISOString().slice(0, 10);
+
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${teamName}-backup-${stamp}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 0);
+
+            this.showNotification(`Backup saved - ${found} item${found === 1 ? '' : 's'}`, 'success');
+            return true;
+
+        } catch (error) {
+            console.error('❌ Error exporting app data:', error);
+            this.showNotification(`Export failed: ${error.message}`, 'error');
+            return false;
+        }
+    }
+
+    /** Opens a file picker and restores a backup written by exportAppData. */
+    importAppData() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json,.json';
+
+        input.addEventListener('change', async () => {
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            try {
+                const payload = JSON.parse(await file.text());
+
+                if (!payload || payload.app !== 'fantasy-football-command-center' || !payload.data) {
+                    throw new Error('Not a backup from this app');
+                }
+
+                const keys = this.getPersistedKeys();
+                const restorable = Object.keys(payload.data).filter(k => keys.includes(k));
+
+                if (!restorable.length) {
+                    throw new Error('Backup contains nothing this app can restore');
+                }
+
+                const confirmed = confirm(
+                    `Restore ${restorable.length} item(s) from ${file.name}?\n\n` +
+                    `This replaces your current league setup, draft plan and learning progress.`
+                );
+                if (!confirmed) return;
+
+                restorable.forEach(key => {
+                    const value = payload.data[key];
+                    localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+                });
+
+                this.showNotification('Backup restored - reloading...', 'success');
+                setTimeout(() => window.location.reload(), 900);
+
+            } catch (error) {
+                console.error('❌ Error importing app data:', error);
+                this.showNotification(`Import failed: ${error.message}`, 'error');
+            }
+        });
+
+        input.click();
+    }
+
     resetConfiguration() {
         if (confirm('Are you sure you want to reset all configuration? This cannot be undone.')) {
             localStorage.removeItem('fantasyAppConfig');

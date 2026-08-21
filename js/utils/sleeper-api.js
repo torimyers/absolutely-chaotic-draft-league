@@ -6,16 +6,26 @@
 class SleeperAPI {
     constructor() {
         this.baseURL = 'https://api.sleeper.app/v1';
-        this.cache = new Map();
+
+        // Cache and in-flight requests are shared by every instance. Each feature
+        // constructs its own SleeperAPI, so per-instance state meant the same
+        // endpoint was fetched once per manager - /players/nfl is roughly 5 MB and
+        // was being downloaded four times on every page load.
+        this.cache = SleeperAPI.sharedCache;
+        this.inFlight = SleeperAPI.sharedInFlight;
         this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
     }
 
     /**
-     * Generic API fetch with caching
+     * Generic API fetch with caching.
+     *
+     * Managers all initialise at once, so a plain cache does not help on startup:
+     * nothing has resolved yet when the second caller arrives. Concurrent callers
+     * therefore share one in-flight promise per endpoint.
      */
     async fetchAPI(endpoint, useCache = true) {
         const cacheKey = endpoint;
-        
+
         // Check cache first
         if (useCache && this.cache.has(cacheKey)) {
             const cached = this.cache.get(cacheKey);
@@ -25,26 +35,39 @@ class SleeperAPI {
             }
         }
 
-        try {
+        // Join a request that is already running for this endpoint.
+        if (this.inFlight.has(cacheKey)) {
+            console.log(`🔗 Joining in-flight request for: ${endpoint}`);
+            return this.inFlight.get(cacheKey);
+        }
+
+        const request = (async () => {
             const response = await fetch(`${this.baseURL}${endpoint}`);
-            
+
             if (!response.ok) {
                 throw new Error(`API Error: ${response.status} ${response.statusText}`);
             }
-            
+
             const data = await response.json();
-            
+
             // Cache the response
             this.cache.set(cacheKey, {
                 data,
                 timestamp: Date.now()
             });
-            
+
             return data;
-            
+        })();
+
+        this.inFlight.set(cacheKey, request);
+
+        try {
+            return await request;
         } catch (error) {
             console.error(`❌ Sleeper API Error for ${endpoint}:`, error);
             throw error;
+        } finally {
+            this.inFlight.delete(cacheKey);
         }
     }
 
@@ -224,6 +247,10 @@ class SleeperAPI {
         }
     }
 }
+
+// One cache and one in-flight map for every instance in the page.
+SleeperAPI.sharedCache = new Map();
+SleeperAPI.sharedInFlight = new Map();
 
 // Create singleton instance
 const sleeperAPI = new SleeperAPI();
