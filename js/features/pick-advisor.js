@@ -98,18 +98,14 @@ class PickAdvisor {
     /**
      * The rank at which a position stops being startable, which is where
      * "replacement level" sits. Flex demand is shared between running backs and
-     * receivers, so both replacement lines sit deeper than their starter counts.
+     * receivers, so both replacement lines sit deeper than their starter counts,
+     * and a Super Flex roster pushes the quarterback line deeper still.
+     *
+     * Delegates to PlayerStats so the draft board and the season-long analysis
+     * cannot disagree about who counts as a startable player.
      */
-    getReplacementRank(position, teams) {
-        const t = teams || 12;
-        return {
-            QB: t,
-            RB: Math.round(t * 2.5),
-            WR: Math.round(t * 2.5),
-            TE: t,
-            K: t,
-            DEF: t
-        }[position] || t;
+    getReplacementRank(position, teams, rosterFormat) {
+        return PlayerStats.replacementRank(position, teams, rosterFormat);
     }
 
     // ======================
@@ -126,7 +122,7 @@ class PickAdvisor {
      * upward all draft, and once the pool is shallower than the replacement rank
      * it collapses onto the worst player left, understating everyone's value.
      */
-    computeReplacementBaselines(allPlayers, projections, teams, scoringFormat) {
+    computeReplacementBaselines(allPlayers, projections, teams, scoringFormat, rosterFormat) {
         if (!projections || !allPlayers || !allPlayers.length) return null;
 
         const pointsByPosition = {};
@@ -149,7 +145,7 @@ class PickAdvisor {
         const baselines = {};
         Object.entries(pointsByPosition).forEach(([pos, points]) => {
             points.sort((a, b) => b - a);
-            const rank = this.getReplacementRank(pos, teams);
+            const rank = this.getReplacementRank(pos, teams, rosterFormat);
             // Too few projected players to locate the line honestly.
             if (points.length < rank) return;
             baselines[pos] = points[rank - 1];
@@ -164,7 +160,7 @@ class PickAdvisor {
      * which was used on each result.
      */
     valuePlayers(availablePlayers, options) {
-        const { teams, scoringFormat, projections, replacementBaselines } = options;
+        const { teams, scoringFormat, rosterFormat, projections, replacementBaselines } = options;
         const byPosition = {};
 
         availablePlayers.forEach(player => {
@@ -211,7 +207,7 @@ class PickAdvisor {
             }
 
             const multiplier = usingProjections ? 1 : this.getFormatMultiplier(pos, scoringFormat);
-            const replacementRank = this.getReplacementRank(pos, teams);
+            const replacementRank = this.getReplacementRank(pos, teams, rosterFormat);
 
             // Replacement level is the player actually sitting at that rank when
             // projections are available, rather than a point on a generic curve.
@@ -341,6 +337,7 @@ class PickAdvisor {
             roster = { counts: {} },
             teams = 12,
             scoringFormat = 'Half PPR',
+            rosterFormat = 'Standard',
             playerLookup = () => null,
             projections = null,
             replacementBaselines = null
@@ -349,7 +346,7 @@ class PickAdvisor {
         if (!availablePlayers.length) return [];
 
         const valued = this.valuePlayers(availablePlayers, {
-            teams, scoringFormat, projections, replacementBaselines
+            teams, scoringFormat, rosterFormat, projections, replacementBaselines
         });
         const byId = new Map(valued.map(p => [String(p.id), p]));
         const runs = this.detectRuns(picks, teams, playerLookup);

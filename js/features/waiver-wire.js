@@ -96,6 +96,7 @@ class WaiverWireManager {
             await PlayerStats.shared().ensureLoaded({
                 week: this.currentWeek,
                 scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+                rosterFormat: this.configManager.config.rosterFormat || 'Standard',
                 teams: this.configManager.config.leagueSize || 12,
                 allPlayers
             });

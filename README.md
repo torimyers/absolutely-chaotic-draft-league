@@ -40,7 +40,8 @@ An AI-powered fantasy football draft assistant with real-time Sleeper integratio
 - **Performance analytics** with CSV export
 
 ### 🔗 Sleeper Integration
-- **Auto-import league settings** with one click
+- **Auto-import league settings** with one click — including scoring format and
+  roster format, read separately from your league's own settings
 - **Team auto-detection** using your username
 - **Live roster syncing** during the season
 - **Trade and waiver tracking** across your league
@@ -51,7 +52,8 @@ season projections before Week 1, actual scoring once games are played — in yo
 league's scoring format. Nothing is invented to fill a gap:
 
 - **Player value** is production measured against replacement level at that
-  position for your league size, so the same roster scores the same every time.
+  position for your league size and roster format, so the same roster scores the
+  same every time.
 - **Performance analytics** reads real weekly game logs. Before Week 1 there are
   none, so it says so rather than showing numbers.
 - **Team context** in waiver and trade notes is each offense's real fantasy

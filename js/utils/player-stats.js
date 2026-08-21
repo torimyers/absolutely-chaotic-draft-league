@@ -24,6 +24,7 @@ class PlayerStats {
         this.currentWeek = null;
         this.seasonType = null;
         this.scoringFormat = null;
+        this.rosterFormat = 'Standard';
         this.teams = 12;
         this.seasonPoints = new Map();   // player_id -> points for the season
         this.weeks = [];                 // [{ week, points: Map }] most recent last
@@ -46,10 +47,22 @@ class PlayerStats {
      * Matches PickAdvisor.getReplacementRank so the draft board and the season
      * analysis do not disagree about who counts as a starter.
      */
-    static replacementRank(position, teams) {
+    static replacementRank(position, teams, rosterFormat) {
         const t = teams || 12;
+
+        // A Super Flex or 2QB league starts close to two quarterbacks per team,
+        // so the replacement-level QB is far deeper in the pool - roughly the
+        // 22nd rather than the 12th in a 12-team league. Leaving it at one per
+        // team is what makes QB value collapse in these formats.
+        const twoQB = rosterFormat === 'Super Flex' || rosterFormat === '2QB';
+        const qbRank = rosterFormat === '2QB'
+            ? t * 2                     // both slots are mandatory
+            : twoQB
+                ? Math.round(t * 1.8)   // most, not all, teams start a second QB
+                : t;
+
         return {
-            QB: t,
+            QB: qbRank,
             RB: Math.round(t * 2.5),
             WR: Math.round(t * 2.5),
             TE: t,
@@ -80,6 +93,7 @@ class PlayerStats {
         this.currentWeek = options.week || state?.week || 1;
         this.seasonType = state?.season_type || 'regular';
         this.scoringFormat = options.scoringFormat || 'Half PPR';
+        this.rosterFormat = options.rosterFormat || 'Standard';
         this.teams = options.teams || 12;
         this.allPlayers = options.allPlayers || await this.api.getAllPlayers().catch(() => null);
 
@@ -172,7 +186,7 @@ class PlayerStats {
         Object.entries(byPosition).forEach(([position, points]) => {
             points.sort((a, b) => b - a);
 
-            const replacementRank = PlayerStats.replacementRank(position, this.teams);
+            const replacementRank = PlayerStats.replacementRank(position, this.teams, this.rosterFormat);
             // The elite anchor is the AVERAGE of the top tier, not one player's
             // total. Anchoring on a single player let everyone above him pin at
             // 100, which collapsed the top of every position into a tie.

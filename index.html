@@ -101,15 +101,23 @@
                         <option value="16">16 Teams</option>
                     </select>
                 </div>
-                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+                <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--space-md);">
                     <div class="form-group">
                         <label class="form-label">Scoring Format</label>
                         <select class="form-select" id="scoringFormat">
                             <option value="Standard">Standard (No PPR)</option>
                             <option value="Half PPR" selected>Half PPR (0.5 per catch)</option>
                             <option value="PPR">Full PPR (1 per catch)</option>
-                            <option value="Super Flex">Super Flex</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Roster Format</label>
+                        <select class="form-select" id="rosterFormat">
+                            <option value="Standard" selected>Standard (1 QB)</option>
+                            <option value="Super Flex">Super Flex (QB allowed in flex)</option>
+                            <option value="2QB">2QB (two QB slots)</option>
+                        </select>
+                        <small class="form-hint">Changes how scarce quarterbacks are, not how points are scored.</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Draft Position</label>

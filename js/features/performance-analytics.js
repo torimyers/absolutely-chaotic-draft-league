@@ -123,6 +123,7 @@ class PerformanceAnalytics {
             await this.playerStats.ensureLoaded({
                 week: this.currentWeek,
                 scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+                rosterFormat: this.configManager.config.rosterFormat || 'Standard',
                 teams: this.configManager.config.leagueSize || 12,
                 allPlayers
             });
@@ -169,6 +170,7 @@ class PerformanceAnalytics {
             await this.playerStats.ensureLoaded({
                 week: this.currentWeek,
                 scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+                rosterFormat: this.configManager.config.rosterFormat || 'Standard',
                 teams: this.configManager.config.leagueSize || 12,
                 allPlayers
             });
@@ -302,11 +304,12 @@ class PerformanceAnalytics {
         });
 
         const teams = this.configManager.config.leagueSize || 12;
+        const rosterFormat = this.configManager.config.rosterFormat || 'Standard';
         const baselines = {};
 
         Object.entries(perGame).forEach(([position, averages]) => {
             averages.sort((a, b) => b - a);
-            const starters = averages.slice(0, PlayerStats.replacementRank(position, teams));
+            const starters = averages.slice(0, PlayerStats.replacementRank(position, teams, rosterFormat));
             if (!starters.length) return;
             const mean = starters.reduce((sum, avg) => sum + avg, 0) / starters.length;
             if (mean > 0) baselines[position] = mean;

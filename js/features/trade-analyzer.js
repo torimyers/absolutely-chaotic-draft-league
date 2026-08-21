@@ -36,6 +36,7 @@ class TradeAnalyzer {
         await this.playerStats.ensureLoaded({
             week: this.currentWeek,
             scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+            rosterFormat: this.configManager.config.rosterFormat || 'Standard',
             teams: this.configManager.config.leagueSize || 12,
             allPlayers
         });
@@ -161,7 +162,9 @@ class TradeAnalyzer {
         try {
             const scoringFormat = this.configManager.config.scoringFormat || 'Half PPR';
             const isPPR = scoringFormat.includes('PPR');
-            const isSuperflex = scoringFormat.includes('Super Flex');
+            // Roster format, not scoring format - Super Flex is about how many
+            // quarterbacks start, which is orthogonal to points per reception.
+            const isSuperflex = this.configManager.startsTwoQuarterbacks();
 
             let baseValue = 50; // Base value out of 100
             

@@ -778,6 +778,31 @@ class DraftTracker {
         return { level, remaining };
     }
 
+    /**
+     * The draft being tracked is the authority on its own lineup - a mock draft
+     * can be Super Flex while the saved league profile is not. Falls back to the
+     * configured setting when the draft does not publish its slots.
+     */
+    resolveRosterFormat() {
+        const slots = this.draftData?.settings?.slots_super_flex
+            ? ['SUPER_FLEX']
+            : this.draftData?.roster_positions;
+
+        if (Array.isArray(slots) && slots.length) {
+            return ConfigManager.detectRosterFormat(slots);
+        }
+
+        // Sleeper reports a draft's lineup as slot counts rather than a list.
+        const settings = this.draftData?.settings;
+        if (settings) {
+            if (settings.slots_super_flex > 0) return 'Super Flex';
+            if (settings.slots_qb >= 2) return '2QB';
+            if (settings.slots_qb === 1) return 'Standard';
+        }
+
+        return this.configManager.config.rosterFormat || 'Standard';
+    }
+
     normalizePosition(position) {
         // Handle different position formats from Sleeper API
         const positionMap = {
@@ -1291,6 +1316,7 @@ class DraftTracker {
             roster: myRoster,
             teams: this.draftData?.settings?.teams || this.configManager.config.leagueSize || 12,
             scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+            rosterFormat: this.resolveRosterFormat(),
             playerLookup: pick => this.playerDatabase.get(pick.player_id)
                 || (pick.metadata ? { position: this.normalizePosition(pick.metadata.position) } : null),
             projections: this.projections,
@@ -1299,7 +1325,8 @@ class DraftTracker {
                 Array.from(this.playerDatabase.values()),
                 this.projections,
                 this.draftData?.settings?.teams || this.configManager.config.leagueSize || 12,
-                this.configManager.config.scoringFormat || 'Half PPR'
+                this.configManager.config.scoringFormat || 'Half PPR',
+                this.resolveRosterFormat()
             )
         });
 

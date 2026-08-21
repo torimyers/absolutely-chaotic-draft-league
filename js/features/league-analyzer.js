@@ -78,6 +78,7 @@ class LeagueAnalyzer {
                 season: league?.season,
                 week: this.currentWeek,
                 scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+                rosterFormat: this.configManager.config.rosterFormat || 'Standard',
                 teams: league?.total_rosters || this.configManager.config.leagueSize || 12,
                 allPlayers
             });
