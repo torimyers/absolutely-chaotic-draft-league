@@ -1,7 +1,7 @@
 // Service Worker for Fantasy Football Command Center
 // Enables offline functionality and PWA features
 
-const CACHE_NAME = 'fantasy-football-v3';
+const CACHE_NAME = 'fantasy-football-v4';
 
 // App shell. Every entry is verified to exist in the repo - a missing file would
 // make cache.addAll() reject and abort the whole install, which is what silently
@@ -57,6 +57,7 @@ const PRECACHE_URLS = [
   './js/features/weather-analyzer.js',
   './js/features/predictive-analytics.js',
   './js/utils/sleeper-api.js',
+  './js/utils/player-stats.js',
   './js/app.js',
   './icons/icon-96.png',
   './icons/icon-192.png',

@@ -7,6 +7,7 @@ class PerformanceAnalytics {
     constructor(configManager) {
         this.configManager = configManager;
         this.sleeperAPI = new SleeperAPI();
+        this.playerStats = PlayerStats.shared();
         this.currentWeek = null;
         this.playerPerformanceData = new Map();
         this.trendAnalyzer = null;
@@ -116,16 +117,28 @@ class PerformanceAnalytics {
 
             const roster = window.teamManager.currentRoster.roster;
             const allPlayers = await this.sleeperAPI.getAllPlayers();
-            
-            // Get performance data for roster players
+
+            // Real game logs from Sleeper. Nothing below invents a score, so if
+            // no games have been played the analysis says so instead.
+            await this.playerStats.ensureLoaded({
+                week: this.currentWeek,
+                scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+                teams: this.configManager.config.leagueSize || 12,
+                allPlayers
+            });
+
             const performanceAnalysis = await this.analyzePlayersPerformance(
                 [...(roster.starters || []), ...(roster.players || [])],
                 allPlayers
             );
 
             this.displayRosterAnalysis(performanceAnalysis);
-            
-            this.configManager.showNotification('📊 Roster performance analysis complete!', 'success');
+
+            if (performanceAnalysis.noData) {
+                this.configManager.showNotification('📊 No games played yet - nothing to analyze', 'info');
+            } else {
+                this.configManager.showNotification('📊 Roster performance analysis complete!', 'success');
+            }
 
         } catch (error) {
             console.error('❌ Error analyzing roster:', error);
@@ -151,8 +164,15 @@ class PerformanceAnalytics {
             ]);
 
             const allPlayers = await this.sleeperAPI.getAllPlayers();
-            
-            // Analyze trends
+
+            // Trend catalysts are drawn from real team production
+            await this.playerStats.ensureLoaded({
+                week: this.currentWeek,
+                scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+                teams: this.configManager.config.leagueSize || 12,
+                allPlayers
+            });
+
             const trendAnalysis = await this.trendAnalyzer.analyzeTrends(
                 trendingAdds,
                 trendingDrops,
@@ -178,185 +198,211 @@ class PerformanceAnalytics {
             consistentPlayers: [],
             concerningTrends: [],
             breakoutCandidates: [],
-            overallSummary: {}
+            overallSummary: {},
+            noData: false,
+            source: this.playerStats.describeSource()
         };
+
+        // Weekly game logs only exist once games have been played. Before Week 2
+        // there is nothing to average, and saying so beats printing numbers that
+        // were never scored.
+        if (!this.playerStats.weeks.length) {
+            analysis.noData = true;
+            analysis.reason = this.playerStats.hasData()
+                ? `No games played yet this season - ${this.playerStats.describeSource()} are available, but weekly performance needs completed games.`
+                : 'No published stats for this season yet.';
+            analysis.overallSummary = {
+                totalPlayers: 0,
+                averageTeamPoints: null,
+                highPerformerCount: 0,
+                concerningPlayerCount: 0,
+                breakoutCandidateCount: 0,
+                rosterHealthScore: null
+            };
+            return analysis;
+        }
+
+        const positionBaselines = this.computePositionBaselines(allPlayers);
 
         let totalPlayers = 0;
         let totalPoints = 0;
-        const scoringFormat = this.configManager.config.scoringFormat || 'Half PPR';
+        const seen = new Set();
 
         for (const playerId of playerIds) {
+            if (seen.has(playerId)) continue; // starters are also in players
+            seen.add(playerId);
+
             const player = allPlayers[playerId];
             if (!player) continue;
 
-            const playerAnalysis = await this.analyzePlayerPerformance(player, scoringFormat);
+            const playerAnalysis = this.analyzePlayerPerformance(player, positionBaselines);
             if (!playerAnalysis) continue;
 
             totalPlayers++;
             totalPoints += playerAnalysis.averagePoints;
 
-            // Categorize players
             if (playerAnalysis.performanceRating >= 85) {
                 analysis.highPerformers.push(playerAnalysis);
             }
-            
+
             if (playerAnalysis.consistencyScore >= 80) {
                 analysis.consistentPlayers.push(playerAnalysis);
             }
-            
+
             if (playerAnalysis.trendDirection === 'declining' || playerAnalysis.concernLevel === 'high') {
                 analysis.concerningTrends.push(playerAnalysis);
             }
-            
+
             if (playerAnalysis.breakoutPotential >= 70) {
                 analysis.breakoutCandidates.push(playerAnalysis);
             }
         }
 
-        // Calculate overall summary
+        if (totalPlayers === 0) {
+            analysis.noData = true;
+            analysis.reason = 'None of your rostered players have recorded a game in the weeks loaded.';
+        }
+
         analysis.overallSummary = {
             totalPlayers,
-            averageTeamPoints: totalPlayers > 0 ? (totalPoints / totalPlayers).toFixed(1) : 0,
+            averageTeamPoints: totalPlayers > 0 ? (totalPoints / totalPlayers).toFixed(1) : null,
             highPerformerCount: analysis.highPerformers.length,
             concerningPlayerCount: analysis.concerningTrends.length,
             breakoutCandidateCount: analysis.breakoutCandidates.length,
-            rosterHealthScore: this.calculateRosterHealth(analysis)
+            rosterHealthScore: totalPlayers > 0 ? this.calculateRosterHealth(analysis, totalPlayers) : null,
+            weeksAnalyzed: this.playerStats.weeks.map(w => w.week)
         };
 
         return analysis;
     }
 
-    async analyzePlayerPerformance(player, scoringFormat) {
-        try {
-            // Generate simulated performance data (in production, would use real game logs)
-            const performanceData = this.generatePerformanceData(player, scoringFormat);
-            
-            const analysis = {
-                player: {
-                    name: `${player.first_name} ${player.last_name}`,
-                    position: player.position,
-                    team: player.team,
-                    id: player.player_id
-                },
-                averagePoints: performanceData.averagePoints,
-                recentForm: performanceData.recentForm,
-                consistencyScore: performanceData.consistencyScore,
-                performanceRating: performanceData.performanceRating,
-                trendDirection: performanceData.trendDirection,
-                breakoutPotential: performanceData.breakoutPotential,
-                concernLevel: performanceData.concernLevel,
-                weeklyScores: performanceData.weeklyScores,
-                insights: performanceData.insights,
-                recommendations: performanceData.recommendations
-            };
+    /**
+     * What an average starter at each position actually scores per game, taken
+     * from the same weeks being analyzed. This replaces a hardcoded table of
+     * "QB: 18, RB: 14" guesses, so a low-scoring season lowers the bar for
+     * everyone rather than making the whole league look like it underperformed.
+     */
+    computePositionBaselines(allPlayers) {
+        const perGame = {};
 
-            return analysis;
-            
-        } catch (error) {
-            console.error(`Error analyzing ${player.first_name} ${player.last_name}:`, error);
-            return null;
-        }
+        const totals = new Map();
+        this.playerStats.weeks.forEach(entry => {
+            entry.points.forEach((points, playerId) => {
+                const record = totals.get(playerId) || { points: 0, games: 0 };
+                record.points += points;
+                record.games += 1;
+                totals.set(playerId, record);
+            });
+        });
+
+        totals.forEach((record, playerId) => {
+            const position = allPlayers[playerId]?.position;
+            if (!position || record.games < 2) return;
+            (perGame[position] = perGame[position] || []).push(record.points / record.games);
+        });
+
+        const teams = this.configManager.config.leagueSize || 12;
+        const baselines = {};
+
+        Object.entries(perGame).forEach(([position, averages]) => {
+            averages.sort((a, b) => b - a);
+            const starters = averages.slice(0, PlayerStats.replacementRank(position, teams));
+            if (!starters.length) return;
+            const mean = starters.reduce((sum, avg) => sum + avg, 0) / starters.length;
+            if (mean > 0) baselines[position] = mean;
+        });
+
+        return baselines;
     }
 
-    generatePerformanceData(player, scoringFormat) {
-        // Simulate realistic performance data based on position and scoring format
-        const basePoints = this.getBasePointsByPosition(player.position, scoringFormat);
-        const volatility = this.getVolatilityByPosition(player.position);
-        
-        const weeklyScores = [];
-        let totalPoints = 0;
-        
-        // Generate 8 weeks of data
-        for (let week = 1; week <= Math.min(this.currentWeek - 1, 8); week++) {
-            const variance = (Math.random() - 0.5) * volatility;
-            const weekScore = Math.max(0, basePoints + variance);
-            weeklyScores.push({
-                week,
-                points: parseFloat(weekScore.toFixed(1))
-            });
-            totalPoints += weekScore;
-        }
-        
-        const averagePoints = weeklyScores.length > 0 ? totalPoints / weeklyScores.length : 0;
-        
-        // Calculate recent form (last 3 games)
+    analyzePlayerPerformance(player, positionBaselines) {
+        const weeklyScores = this.playerStats.weeklyFor(player.player_id);
+
+        // A player with no stat line did not play. Recording that as a zero
+        // would drag his average down for weeks he was never active in.
+        if (weeklyScores.length === 0) return null;
+
+        const performanceData = this.summarizePerformance(player, weeklyScores, positionBaselines);
+
+        return {
+            player: {
+                name: `${player.first_name} ${player.last_name}`,
+                position: player.position,
+                team: player.team,
+                id: player.player_id
+            },
+            ...performanceData
+        };
+    }
+
+    /**
+     * Turns a real set of weekly scores into the metrics the cards display.
+     * Every number here traces back to points the player actually scored.
+     */
+    summarizePerformance(player, weeklyScores, positionBaselines) {
+        const points = weeklyScores.map(game => game.points);
+        const totalPoints = points.reduce((sum, p) => sum + p, 0);
+        const averagePoints = totalPoints / points.length;
+
         const recentGames = weeklyScores.slice(-3);
-        const recentAverage = recentGames.length > 0 ? 
-            recentGames.reduce((sum, game) => sum + game.points, 0) / recentGames.length : 0;
-        
-        // Calculate consistency (lower standard deviation = more consistent)
-        const variance = weeklyScores.reduce((sum, game) => 
-            sum + Math.pow(game.points - averagePoints, 2), 0) / weeklyScores.length;
+        const recentAverage = recentGames.reduce((sum, game) => sum + game.points, 0) / recentGames.length;
+
+        // Consistency is the inverse of week-to-week spread, expressed relative
+        // to the player's own average so a 20-point scorer is not marked erratic
+        // for the same swing that would be huge on a 5-point scorer.
+        const variance = points.reduce((sum, p) => sum + Math.pow(p - averagePoints, 2), 0) / points.length;
         const standardDeviation = Math.sqrt(variance);
-        const consistencyScore = Math.max(0, 100 - (standardDeviation * 5));
+        const coefficient = averagePoints > 0 ? standardDeviation / averagePoints : 1;
+        const consistencyScore = Math.max(0, Math.min(100, 100 - coefficient * 100));
 
-        // Determine trend direction
-        const firstHalf = weeklyScores.slice(0, Math.floor(weeklyScores.length / 2));
-        const secondHalf = weeklyScores.slice(Math.floor(weeklyScores.length / 2));
-        
-        const firstHalfAvg = firstHalf.reduce((sum, game) => sum + game.points, 0) / firstHalf.length;
-        const secondHalfAvg = secondHalf.reduce((sum, game) => sum + game.points, 0) / secondHalf.length;
-        
+        // Two or three games is not a trend.
         let trendDirection = 'stable';
-        if (secondHalfAvg > firstHalfAvg * 1.15) trendDirection = 'improving';
-        else if (secondHalfAvg < firstHalfAvg * 0.85) trendDirection = 'declining';
+        if (weeklyScores.length >= 4) {
+            const split = Math.floor(weeklyScores.length / 2);
+            const mean = list => list.reduce((sum, game) => sum + game.points, 0) / list.length;
+            const firstHalfAvg = mean(weeklyScores.slice(0, split));
+            const secondHalfAvg = mean(weeklyScores.slice(split));
 
-        // Performance rating
-        const performanceRating = Math.min(100, Math.max(0, 
-            (averagePoints / basePoints) * 100
-        ));
+            if (firstHalfAvg > 0) {
+                if (secondHalfAvg > firstHalfAvg * 1.15) trendDirection = 'improving';
+                else if (secondHalfAvg < firstHalfAvg * 0.85) trendDirection = 'declining';
+            }
+        }
 
-        // Breakout potential
+        // 100 means scoring half again what an average starter at the position
+        // does; an average starter lands around 67.
+        const baseline = positionBaselines[player.position];
+        const performanceRating = baseline
+            ? Math.min(100, Math.max(0, (averagePoints / (baseline * 1.5)) * 100))
+            : null;
+
         const breakoutPotential = this.calculateBreakoutPotential(
             player, averagePoints, trendDirection, recentAverage
         );
 
-        // Concern level
         const concernLevel = this.calculateConcernLevel(
             player, trendDirection, consistencyScore, performanceRating
         );
 
         return {
             averagePoints: parseFloat(averagePoints.toFixed(1)),
+            totalPoints: parseFloat(totalPoints.toFixed(1)),
+            gamesPlayed: weeklyScores.length,
             recentForm: parseFloat(recentAverage.toFixed(1)),
             consistencyScore: Math.round(consistencyScore),
-            performanceRating: Math.round(performanceRating),
+            performanceRating: performanceRating === null ? null : Math.round(performanceRating),
+            positionBaseline: baseline ? parseFloat(baseline.toFixed(1)) : null,
             trendDirection,
             breakoutPotential: Math.round(breakoutPotential),
             concernLevel,
             weeklyScores,
             insights: this.generateInsights(player, {
-                averagePoints, trendDirection, consistencyScore, performanceRating
+                averagePoints, trendDirection, consistencyScore, performanceRating, weeklyScores
             }),
             recommendations: this.generateRecommendations(player, {
                 trendDirection, breakoutPotential, concernLevel
             })
         };
-    }
-
-    getBasePointsByPosition(position, scoringFormat) {
-        const isPPR = scoringFormat.includes('PPR');
-        const basePoints = {
-            'QB': 18,
-            'RB': isPPR ? 14 : 12,
-            'WR': isPPR ? 13 : 11,
-            'TE': isPPR ? 10 : 8,
-            'K': 8,
-            'DEF': 9
-        };
-        return basePoints[position] || 10;
-    }
-
-    getVolatilityByPosition(position) {
-        const volatility = {
-            'QB': 8,
-            'RB': 10,
-            'WR': 12,
-            'TE': 8,
-            'K': 6,
-            'DEF': 7
-        };
-        return volatility[position] || 8;
     }
 
     calculateBreakoutPotential(player, averagePoints, trendDirection, recentForm) {
@@ -380,7 +426,8 @@ class PerformanceAnalytics {
     }
 
     calculateConcernLevel(player, trendDirection, consistencyScore, performanceRating) {
-        if (trendDirection === 'declining' && performanceRating < 70) return 'high';
+        if (player.injury_status && ['out', 'ir', 'pup', 'sus'].includes(player.injury_status.toLowerCase())) return 'high';
+        if (trendDirection === 'declining' && typeof performanceRating === 'number' && performanceRating < 70) return 'high';
         if (trendDirection === 'declining' || consistencyScore < 50) return 'medium';
         if (player.injury_status) return 'medium';
         return 'low';
@@ -388,13 +435,20 @@ class PerformanceAnalytics {
 
     generateInsights(player, stats) {
         const insights = [];
-        
-        if (stats.performanceRating >= 90) {
+        const games = stats.weeklyScores ? stats.weeklyScores.length : 0;
+
+        if (typeof stats.performanceRating !== 'number') {
+            insights.push('No position baseline available to rate this against');
+        } else if (stats.performanceRating >= 90) {
             insights.push('Elite performer exceeding expectations');
         } else if (stats.performanceRating <= 60) {
             insights.push('Underperforming relative to position average');
         }
-        
+
+        if (games > 0 && games < 4) {
+            insights.push(`Only ${games} game${games === 1 ? '' : 's'} played - treat these numbers as provisional`);
+        }
+
         if (stats.trendDirection === 'improving') {
             insights.push('Positive momentum in recent weeks');
         } else if (stats.trendDirection === 'declining') {
@@ -426,9 +480,9 @@ class PerformanceAnalytics {
         return recommendations;
     }
 
-    calculateRosterHealth(analysis) {
-        const total = analysis.overallSummary.totalPlayers;
-        if (total === 0) return 50;
+    calculateRosterHealth(analysis, totalPlayers) {
+        const total = totalPlayers;
+        if (!total) return null;
         
         const highPerformerRatio = analysis.highPerformers.length / total;
         const concernRatio = analysis.concerningTrends.length / total;
@@ -447,33 +501,74 @@ class PerformanceAnalytics {
         // Kept so the export button has something to write out.
         this.lastAnalysis = analysis;
 
+        // Preseason, or a roster whose players have not taken a snap. There is
+        // nothing to average, so say that rather than filling the page in.
+        if (analysis.noData) {
+            container.innerHTML = `
+                <div class="analytics-empty-state">
+                    <div class="icon">📊</div>
+                    <h3>No performance data yet</h3>
+                    <p>${analysis.reason || 'No games have been played yet this season.'}</p>
+                    <p class="analytics-source-note">
+                        Weekly scoring, consistency and trend all need completed games.
+                        They will fill in automatically once Week 1 is in the books.
+                    </p>
+                    <div class="analytics-actions">
+                        <button class="btn btn-secondary" onclick="performanceAnalytics.runTrendAnalysis()">
+                            <span>📈</span> Find Trending Players
+                        </button>
+                        <button class="btn btn-outline" onclick="performanceAnalytics.showPerformanceDemo()">
+                            <span>🎮</span> See Sample Analysis
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        const summary = analysis.overallSummary;
+        const weeks = summary.weeksAnalyzed || [];
+
         container.innerHTML = `
             <div class="analytics-header">
                 <h3>📊 Roster Performance Analysis</h3>
-                <div class="roster-health-score">
-                    <span class="score-label">Roster Health Score:</span>
-                    <span class="score-value ${this.getHealthScoreClass(analysis.overallSummary.rosterHealthScore)}">
-                        ${analysis.overallSummary.rosterHealthScore}/100
-                    </span>
-                </div>
+                ${typeof summary.rosterHealthScore === 'number' ? `
+                    <div class="roster-health-score">
+                        <span class="score-label">Roster Health Score:</span>
+                        <span class="score-value ${this.getHealthScoreClass(summary.rosterHealthScore)}">
+                            ${summary.rosterHealthScore}/100
+                        </span>
+                    </div>
+                ` : ''}
             </div>
+
+            ${analysis.isDemo ? `
+                <div class="analytics-source-note demo-banner">
+                    🎮 Sample data - these players and scores are illustrative, not your roster.
+                </div>
+            ` : weeks.length ? `
+                <div class="analytics-source-note">
+                    Based on real Sleeper scoring for week${weeks.length === 1 ? '' : 's'}
+                    ${weeks.length === 1 ? weeks[0] : `${weeks[0]}-${weeks[weeks.length - 1]}`}.
+                </div>
+            ` : ''}
 
             <div class="analytics-summary">
                 <div class="summary-stats">
                     <div class="stat-item">
-                        <span class="stat-number">${analysis.overallSummary.totalPlayers}</span>
-                        <span class="stat-label">Total Players</span>
+                        <span class="stat-number">${summary.totalPlayers}</span>
+                        <span class="stat-label">Players With Games</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">${analysis.overallSummary.averageTeamPoints}</span>
+                        <span class="stat-number">${summary.averageTeamPoints ?? '-'}</span>
                         <span class="stat-label">Avg Points/Player</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">${analysis.overallSummary.highPerformerCount}</span>
+                        <span class="stat-number">${summary.highPerformerCount}</span>
                         <span class="stat-label">High Performers</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">${analysis.overallSummary.concerningPlayerCount}</span>
+                        <span class="stat-number">${summary.concerningPlayerCount}</span>
                         <span class="stat-label">Concerning Players</span>
                     </div>
                 </div>
@@ -544,7 +639,9 @@ class PerformanceAnalytics {
                 <div class="performance-metrics">
                     <div class="metric">
                         <span class="metric-label">Avg Points:</span>
-                        <span class="metric-value">${playerAnalysis.averagePoints}</span>
+                        <span class="metric-value">${playerAnalysis.averagePoints}${
+                            playerAnalysis.gamesPlayed ? ` <small>(${playerAnalysis.gamesPlayed} gm)</small>` : ''
+                        }</span>
                     </div>
                     <div class="metric">
                         <span class="metric-label">Recent Form:</span>
@@ -757,16 +854,19 @@ class PerformanceAnalytics {
     }
 
     async showPerformanceDemo() {
-        // Show demo data for users without roster
+        // Sample data, flagged as such on the page so it cannot be mistaken for
+        // a real analysis of the user's roster.
         const demoAnalysis = this.generateDemoAnalysis();
         this.displayRosterAnalysis(demoAnalysis);
-        
-        this.configManager.showNotification('🎮 Demo analysis loaded - connect your roster for real data!', 'info');
+
+        this.configManager.showNotification('🎮 Sample analysis loaded - connect your roster for real data', 'info');
     }
 
     generateDemoAnalysis() {
-        // Generate sample analysis for demonstration
+        // Hand-written illustrative figures. Never mixed with real analysis:
+        // isDemo drives a banner and blocks export.
         return {
+            isDemo: true,
             highPerformers: [
                 {
                     player: { name: 'Ja\'Marr Chase', position: 'WR', team: 'CIN' },
@@ -809,8 +909,13 @@ class PerformanceAnalytics {
     }
 
     async exportAnalysis() {
-        if (!this.lastAnalysis) {
+        if (!this.lastAnalysis || this.lastAnalysis.noData) {
             this.configManager.showNotification('❌ Run an analysis first, then export it', 'error');
+            return;
+        }
+
+        if (this.lastAnalysis.isDemo) {
+            this.configManager.showNotification('❌ That is sample data - analyze your roster first', 'error');
             return;
         }
 
@@ -874,6 +979,8 @@ class PerformanceAnalytics {
             ['Team', this.configManager.config.teamName || ''],
             ['Week', this.currentWeek || ''],
             ['Scoring', this.configManager.config.scoringFormat || ''],
+            ['Data source', analysis.source || ''],
+            ['Weeks analyzed', (summary.weeksAnalyzed || []).join(' ')],
             [],
             ['Roster health score', summary.rosterHealthScore],
             ['Players analyzed', summary.totalPlayers],

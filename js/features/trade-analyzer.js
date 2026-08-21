@@ -7,6 +7,7 @@ class TradeAnalyzer {
     constructor(configManager) {
         this.configManager = configManager;
         this.sleeperAPI = new SleeperAPI();
+        this.playerStats = PlayerStats.shared();
         this.currentWeek = null;
         this.playerValues = new Map();
         this.positionScarcity = {};
@@ -19,8 +20,52 @@ class TradeAnalyzer {
         // Load current NFL week and basic data
         await this.loadCurrentWeek();
         await this.calculatePositionScarcity();
-        
+        await this.loadTradeMarket();
+
         console.log('✅ TradeAnalyzer: Initialization complete');
+    }
+
+    /**
+     * Real inputs for the two signals that used to be drawn at random:
+     * production (from Sleeper's stats/projections) and market demand (from
+     * Sleeper's own add/drop counts across every league).
+     */
+    async loadTradeMarket() {
+        const allPlayers = await this.sleeperAPI.getAllPlayers().catch(() => null);
+
+        await this.playerStats.ensureLoaded({
+            week: this.currentWeek,
+            scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+            teams: this.configManager.config.leagueSize || 12,
+            allPlayers
+        });
+
+        this.marketMoves = await this.loadMarketMoves();
+    }
+
+    /**
+     * Net add/drop interest per player over the last week, scaled so the most
+     * added player in the league sits at the top of the range.
+     */
+    async loadMarketMoves() {
+        const moves = new Map();
+
+        const [adds, drops] = await Promise.all([
+            this.sleeperAPI.getTrendingPlayers('add', 168, 200).catch(() => []),
+            this.sleeperAPI.getTrendingPlayers('drop', 168, 200).catch(() => [])
+        ]);
+
+        (adds || []).forEach(row => {
+            moves.set(String(row.player_id), (moves.get(String(row.player_id)) || 0) + (row.count || 0));
+        });
+        (drops || []).forEach(row => {
+            moves.set(String(row.player_id), (moves.get(String(row.player_id)) || 0) - (row.count || 0));
+        });
+
+        const magnitudes = [...moves.values()].map(Math.abs);
+        this.marketScale = magnitudes.length ? Math.max(...magnitudes) : 0;
+
+        return moves;
     }
 
     async loadCurrentWeek() {
@@ -130,7 +175,17 @@ class TradeAnalyzer {
                 DEF: 40
             };
 
-            baseValue = positionBaseValues[player.position] || 50;
+            // Sleeper's own production for this player, on a 0-100 positional
+            // scale, is the anchor when it exists. The position constants below
+            // are only a fallback for players with no published numbers - they
+            // cannot tell a starter from his backup, so anything relying on them
+            // is reported at lower confidence.
+            const producedValue = this.playerStats.valueFor(player);
+            const hasRealValue = producedValue !== null;
+
+            baseValue = hasRealValue
+                ? producedValue
+                : (positionBaseValues[player.position] || 50);
 
             // Age adjustment
             const age = this.calculatePlayerAge(player);
@@ -153,16 +208,16 @@ class TradeAnalyzer {
             const scarcityMultiplier = this.positionScarcity[player.position] || 1.0;
             baseValue *= scarcityMultiplier;
 
-            // Season performance trend (simulated - would use real stats)
-            const performanceTrend = this.simulatePerformanceTrend(player);
+            // Recent form from real game logs
+            const performanceTrend = this.getPerformanceTrend(player);
             baseValue += performanceTrend;
 
-            // Team context (opportunity)
+            // Team context (real offensive production, ranked league-wide)
             const teamContext = this.evaluateTeamContext(player);
             baseValue += teamContext;
 
-            // Market demand simulation
-            const marketDemand = this.simulateMarketDemand(player);
+            // Market demand from Sleeper's league-wide add/drop traffic
+            const marketDemand = this.getMarketDemand(player);
             baseValue += marketDemand;
 
             const totalValue = Math.max(5, Math.min(100, baseValue));
@@ -171,8 +226,9 @@ class TradeAnalyzer {
                 player,
                 baseValue: Math.round(baseValue),
                 totalValue: Math.round(totalValue),
+                valueBasis: hasRealValue ? this.playerStats.describeSource() : 'position defaults (no published numbers)',
                 breakdown: {
-                    position: positionBaseValues[player.position],
+                    position: hasRealValue ? Math.round(producedValue) : positionBaseValues[player.position],
                     age: this.getAgeAdjustment(age),
                     experience: this.getExperienceAdjustment(player.years_exp),
                     injury: -this.getInjuryPenalty(player),
@@ -182,7 +238,7 @@ class TradeAnalyzer {
                     market: marketDemand
                 },
                 tier: this.getPlayerTier(totalValue),
-                confidence: this.getValueConfidence(player)
+                confidence: this.getValueConfidence(player, hasRealValue)
             };
 
         } catch (error) {
@@ -227,49 +283,39 @@ class TradeAnalyzer {
         return 0;
     }
 
-    simulatePerformanceTrend(player) {
-        // Simulate recent performance trend (would use real stats in production)
-        const trends = [-10, -5, 0, 5, 10];
-        const weights = [0.1, 0.2, 0.4, 0.2, 0.1]; // Normal distribution
-        
-        let trend = 0;
-        for (let i = 0; i < trends.length; i++) {
-            if (Math.random() < weights[i]) {
-                trend = trends[i];
-                break;
-            }
-        }
-        
-        return trend;
+    /**
+     * Recent form against the player's own season average, from real game logs.
+     *
+     * This used to draw from [-10, -5, 0, 5, 10] at random, so the same trade
+     * scored differently every time it was analyzed. Returns 0 - not a guess -
+     * when there are too few games to read a trend.
+     */
+    getPerformanceTrend(player) {
+        const trend = this.playerStats.trendFor(player.player_id);
+        if (!trend) return 0;
+
+        // +/-10 at a 50% swing in either direction, clamped.
+        const swing = (trend.ratio - 1) * 20;
+        return Math.round(Math.max(-10, Math.min(10, swing)));
     }
 
+    /** Real offensive production of the player's team, ranked league-wide. */
     evaluateTeamContext(player) {
-        // Simulate team opportunity context
-        const teamFactors = ['offense_rank', 'target_share', 'snap_percentage'];
-        let contextScore = 0;
-        
-        // Simulate positive/negative team context
-        if (Math.random() > 0.5) {
-            contextScore = Math.random() * 10 - 5; // -5 to +5
-        }
-        
-        return Math.round(contextScore);
+        const context = this.playerStats.teamContextFor(player.team);
+        return context ? context.adjustment : 0;
     }
 
-    simulateMarketDemand(player) {
-        // Simulate market demand based on position and performance
-        const position = player.position;
-        let demand = 0;
-        
-        if (['RB', 'WR'].includes(position)) {
-            demand = Math.random() * 8 - 4; // High volatility positions
-        } else if (position === 'TE') {
-            demand = Math.random() * 6 - 3; // Medium volatility
-        } else {
-            demand = Math.random() * 4 - 2; // Lower volatility
-        }
-        
-        return Math.round(demand);
+    /**
+     * Where the player sits in Sleeper's league-wide add/drop traffic. Real
+     * demand, not a coin flip: heavily added players cost more to acquire.
+     */
+    getMarketDemand(player) {
+        if (!this.marketMoves || !this.marketScale) return 0;
+
+        const net = this.marketMoves.get(String(player.player_id));
+        if (!net) return 0;
+
+        return Math.round(Math.max(-8, Math.min(8, (net / this.marketScale) * 8)));
     }
 
     getPlayerTier(value) {
@@ -281,9 +327,13 @@ class TradeAnalyzer {
         return 'Replacement';
     }
 
-    getValueConfidence(player) {
+    getValueConfidence(player, hasRealValue) {
         // Confidence based on data availability and player factors
         let confidence = 80; // Base confidence
+
+        // A value built on position defaults is a guess about a player, not a
+        // measurement of him.
+        if (!hasRealValue) confidence -= 30;
         
         if (!player.birth_date) confidence -= 10;
         if (player.injury_status) confidence -= 15;

@@ -179,17 +179,20 @@ class TrendAnalyzer {
         return factors[position] || { scoreModifier: 0, catalysts: [] };
     }
 
+    /**
+     * Real offensive production for the player's team, not a randomly drawn
+     * storyline. A strong offense reads as a catalyst, a weak one as a risk,
+     * and an unranked team contributes neither.
+     */
     getTeamBreakoutContext(team) {
-        // Simulated team contexts - would use real offensive metrics
-        const contexts = [
-            { scoreModifier: 8, catalyst: 'High-volume passing offense creates opportunities' },
-            { scoreModifier: 5, catalyst: 'Improved offensive line provides stability' },
-            { scoreModifier: -3, risk: 'Struggling offense limits upside' },
-            { scoreModifier: 10, catalyst: 'New offensive coordinator unlocking potential' },
-            { scoreModifier: 0, catalyst: null, risk: null }
-        ];
+        const context = PlayerStats.shared().teamContextFor(team);
+        if (!context) return { scoreModifier: 0, catalyst: null, risk: null };
 
-        return contexts[Math.floor(Math.random() * contexts.length)];
+        return {
+            scoreModifier: context.adjustment,
+            catalyst: context.adjustment > 0 ? context.reasoning : null,
+            risk: context.adjustment < 0 ? context.reasoning : null
+        };
     }
 
     getBreakoutTimeframe(breakoutScore, addCount) {
