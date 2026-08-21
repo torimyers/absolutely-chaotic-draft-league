@@ -22,13 +22,77 @@ class ConfigManager {
             
             // App Settings
             sleeperLeagueId: "",
+            sleeperDraftId: null,
             learningMode: "beginner",
             themeColor: "teal",
-            
+
             // Status flags
             isConfigured: false,
-            draftCompleted: false
+            draftCompleted: false,
+            isMockDraft: false
         };
+    }
+
+    /**
+     * Works out what the user actually pasted into the league field. Sleeper
+     * league IDs and draft IDs look identical on their own, so the only reliable
+     * signal is the URL they came from.
+     *
+     * Returns { kind: 'league' | 'draft' | 'empty' | 'invalid', id }.
+     */
+    parseSleeperInput(raw) {
+        const value = String(raw == null ? '' : raw).trim();
+
+        if (!value) return { kind: 'empty', id: null };
+
+        // https://sleeper.com/draft/nfl/1234567890
+        const draftUrl = value.match(/draft\/(?:nfl\/)?(\d+)/i);
+        if (draftUrl) return { kind: 'draft', id: draftUrl[1] };
+
+        // https://sleeper.com/leagues/1234567890/team
+        const leagueUrl = value.match(/leagues?\/(\d+)/i);
+        if (leagueUrl) return { kind: 'league', id: leagueUrl[1] };
+
+        // A bare ID is ambiguous; the field is labelled League ID, so treat it as one.
+        const bare = value.match(/^(\d{6,})$/);
+        if (bare) return { kind: 'league', id: bare[1] };
+
+        return { kind: 'invalid', id: null };
+    }
+
+    /**
+     * Forces sleeperLeagueId / sleeperDraftId / isMockDraft into a consistent
+     * state. Only one of the two IDs may be set at a time.
+     *
+     * These flags used to be written when a mock draft URL was pasted and then
+     * never cleared, so entering a real league afterwards left isMockDraft true
+     * and the tracker kept polling the old mock draft, ignoring the league
+     * entirely. This is called on load and on save so stale state cannot survive.
+     */
+    normalizeSleeperTarget(config) {
+        const leagueId = config.sleeperLeagueId ? String(config.sleeperLeagueId).trim() : '';
+        const draftId = config.sleeperDraftId ? String(config.sleeperDraftId).trim() : '';
+
+        // Legacy configs stored the draft ID in BOTH fields; that means mock draft.
+        if (draftId && leagueId === draftId) {
+            config.sleeperLeagueId = '';
+            config.sleeperDraftId = draftId;
+            config.isMockDraft = true;
+            return config;
+        }
+
+        // A real league ID is the user's current intent - drop any stale mock state.
+        if (leagueId) {
+            config.sleeperLeagueId = leagueId;
+            config.sleeperDraftId = null;
+            config.isMockDraft = false;
+            return config;
+        }
+
+        config.sleeperLeagueId = '';
+        config.sleeperDraftId = draftId || null;
+        config.isMockDraft = Boolean(draftId);
+        return config;
     }
 
     async loadConfiguration() {
@@ -37,6 +101,8 @@ class ConfigManager {
         if (saved) {
             try {
                 this.config = { ...this.config, ...JSON.parse(saved) };
+                // Repairs profiles saved before the mock-draft flags were cleared properly.
+                this.normalizeSleeperTarget(this.config);
             } catch (e) {
                 console.warn('Could not load saved configuration, using defaults');
             }
@@ -108,48 +174,49 @@ class ConfigManager {
         const leagueIdInput = document.getElementById('sleeperLeagueId');
         let leagueId = leagueIdInput ? leagueIdInput.value.trim() : this.config.sleeperLeagueId;
         
-        // Check if this is a draft URL or just contains 'draft'
-        if (leagueId.includes('draft')) {
-            this.showNotification('📋 Detected mock draft URL! For mock drafts, skip configuration and go directly to Live Draft tracking.', 'warning');
-            
-            // Extract draft ID if it's a full URL
-            const draftMatch = leagueId.match(/draft\/nfl\/(\d+)/);
-            if (draftMatch) {
-                const draftId = draftMatch[1];
-                console.log('📋 Extracted draft ID:', draftId);
-                // Store as draft ID, not league ID
-                this.config.sleeperDraftId = draftId;
-                this.config.sleeperLeagueId = null; // Clear league ID for mock drafts
-                this.config.isMockDraft = true;
-                
-                // Update the form to show the draft ID
-                this.updateFormFields({
-                    sleeperLeagueId: draftId
-                });
-                
-                // Auto-fill for mock draft
-                this.updateFormFields({
-                    leagueName: 'Mock Draft',
-                    teamName: 'My Mock Team',
-                    leagueSize: 12,
-                    scoringFormat: 'Half PPR'
-                });
-                
-                this.showNotification('✅ Mock draft configured! Go to Live Draft page to start tracking.', 'success');
-                this.config.isConfigured = true;
-                return true;
-            }
-        }
-        
-        console.log('📋 League ID:', leagueId);
-        
-        if (!leagueId) {
+        const parsed = this.parseSleeperInput(leagueId);
+
+        if (parsed.kind === 'empty') {
             this.showNotification('❌ Please enter a Sleeper League ID first', 'error');
             return false;
         }
-        
-        // Update config with the league ID
+
+        if (parsed.kind === 'invalid') {
+            this.showNotification('❌ That does not look like a Sleeper League ID or draft link. Paste the ID, or the URL from your league or draft page.', 'error');
+            return false;
+        }
+
+        if (parsed.kind === 'draft') {
+            const draftId = parsed.id;
+            console.log('📋 Extracted draft ID:', draftId);
+
+            this.config.sleeperDraftId = draftId;
+            this.config.sleeperLeagueId = '';
+            this.config.isMockDraft = true;
+
+            // The pasted draft URL is deliberately left in the field. Writing the
+            // bare ID back made it indistinguishable from a league ID, so saving
+            // reclassified it as one and the draft target was lost.
+            this.updateFormFields({
+                leagueName: 'Mock Draft',
+                teamName: 'My Mock Team',
+                leagueSize: 12,
+                scoringFormat: 'Half PPR'
+            });
+
+            this.showNotification('✅ Mock draft configured! Go to Live Draft page to start tracking.', 'success');
+            this.config.isConfigured = true;
+            return true;
+        }
+
+        // A real league: adopt the parsed ID and drop any leftover mock-draft target.
+        leagueId = parsed.id;
+        console.log('📋 League ID:', leagueId);
+
         this.config.sleeperLeagueId = leagueId;
+        this.config.sleeperDraftId = null;
+        this.config.isMockDraft = false;
+        this.updateFormFields({ sleeperLeagueId: leagueId });
         
         // Save username from form before API call
         const usernameInput = document.getElementById('sleeperUserName');
@@ -614,13 +681,34 @@ class ConfigManager {
             newConfig.sleeperUsername = this.config.sleeperUsername;
         }
 
+        // The form has one box for both league IDs and draft links, so re-read it
+        // here rather than trusting whatever the field happens to hold.
+        if (Object.prototype.hasOwnProperty.call(newConfig, 'sleeperLeagueId')) {
+            const parsed = this.parseSleeperInput(newConfig.sleeperLeagueId);
+
+            if (parsed.kind === 'draft') {
+                newConfig.sleeperLeagueId = '';
+                newConfig.sleeperDraftId = parsed.id;
+                newConfig.isMockDraft = true;
+            } else if (parsed.kind === 'league') {
+                newConfig.sleeperLeagueId = parsed.id;
+                newConfig.sleeperDraftId = null;
+                newConfig.isMockDraft = false;
+            } else {
+                // Nothing usable typed - keep whatever the popup already resolved.
+                delete newConfig.sleeperLeagueId;
+            }
+        }
+
         // Merge with existing config
-        this.config = { 
-            ...this.config, 
+        this.config = {
+            ...this.config,
             ...newConfig,
             isConfigured: true,
             lastUpdated: new Date().toISOString()
         };
+
+        this.normalizeSleeperTarget(this.config);
 
         // Save to localStorage with error handling
         try {
