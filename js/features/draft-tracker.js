@@ -126,14 +126,16 @@ class DraftTracker {
         // If no search rank, assign very high ADP (undraftable)
         if (!searchRank) return 999;
         
-        // Base ADP calculation from search rank
-        let baseADP;
-        if (searchRank <= 12) baseADP = searchRank; // Top tier players
-        else if (searchRank <= 24) baseADP = searchRank + Math.random() * 12; // Early rounds
-        else if (searchRank <= 60) baseADP = searchRank + Math.random() * 24; // Middle rounds
-        else if (searchRank <= 120) baseADP = searchRank + Math.random() * 36; // Later rounds
-        else if (searchRank <= 200) baseADP = searchRank + Math.random() * 50; // Deep sleepers
-        else return 999; // Likely not draftable
+        // Straight from search rank, deliberately without jitter.
+        //
+        // This previously added Math.random() scaled by rank band - up to 36 places
+        // for a player ranked in the 60s. Candidates are sorted by ADP and cut to
+        // the top 50, so the noise decided both the order of the recommendations
+        // and who appeared at all, and it was redrawn on every page load. Reloading
+        // mid-draft produced different advice for an identical board.
+        if (searchRank > 200) return 999; // Likely not draftable
+
+        const baseADP = searchRank;
         
         // Apply PPR adjustment to ADP
         return this.applyPPRADPAdjustment(player, baseADP);
@@ -465,11 +467,66 @@ class DraftTracker {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
         }
-        
+
         // Poll every 3 seconds during active draft
         this.updateInterval = setInterval(() => {
             this.updateDraftStatus();
         }, 3000);
+
+        // Browsers throttle background timers hard - a 3 second poll becomes about
+        // one a minute once the tab is hidden. Since the draft itself happens in
+        // Sleeper, this tab is hidden exactly when picks are landing, so catch up
+        // the moment it is looked at again.
+        if (!this.visibilityHandler) {
+            this.visibilityHandler = () => {
+                if (!document.hidden && this.isTracking) {
+                    this.pendingUIUpdate = false;
+                    this.updateDraftStatus();
+                }
+            };
+            document.addEventListener('visibilitychange', this.visibilityHandler);
+        }
+    }
+
+    /**
+     * Manual catch-up. Background throttling means the feed can lag by up to a
+     * minute however carefully the polling is written, so leave the user a way to
+     * force it rather than making them wonder whether it is stuck.
+     */
+    async refreshDraftNow() {
+        const button = document.getElementById('refreshDraftBtn');
+
+        if (!this.draftId) {
+            this.configManager.showNotification('Start draft tracking first', 'warning');
+            return;
+        }
+
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<span>⏳</span> Refreshing...';
+        }
+
+        try {
+            const before = this.picks.length;
+            await this.updateDraftStatus();
+            const added = this.picks.length - before;
+
+            this.markFeedUpdated();
+            this.configManager.showNotification(
+                added > 0
+                    ? `${added} new pick${added === 1 ? '' : 's'} loaded`
+                    : 'Already up to date',
+                added > 0 ? 'success' : 'info'
+            );
+        } catch (error) {
+            console.error('❌ Error refreshing draft:', error);
+            this.configManager.showNotification(`Refresh failed: ${error.message}`, 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<span>🔄</span> Refresh';
+            }
+        }
     }
 
     stopPolling() {
@@ -477,6 +534,12 @@ class DraftTracker {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
         }
+
+        if (this.visibilityHandler) {
+            document.removeEventListener('visibilitychange', this.visibilityHandler);
+            this.visibilityHandler = null;
+        }
+
         this.isTracking = false;
     }
 
@@ -541,21 +604,43 @@ class DraftTracker {
     }
 
     batchUIUpdates() {
-        // Use requestAnimationFrame to batch UI updates for smoother performance
+        // requestAnimationFrame does not fire in a hidden tab, and you draft in
+        // Sleeper with this tab in the background - so the batched updates never
+        // ran, and because the guard had already been set every later call
+        // early-returned too. Apply directly when hidden.
+        if (document.hidden) {
+            this.applyUIUpdates();
+            return;
+        }
+
         if (this.pendingUIUpdate) return;
-        
+
         this.pendingUIUpdate = true;
         requestAnimationFrame(() => {
-            this.updateDraftDisplay();
-            this.checkUserTurn();
-            this.updatePositionScarcityDisplay();
+            this.applyUIUpdates();
             this.pendingUIUpdate = false;
         });
     }
 
+    applyUIUpdates() {
+        this.updateDraftDisplay();
+        this.checkUserTurn();
+        this.updatePositionScarcityDisplay();
+    }
+
     async processPick(pick) {
         const player = this.playerDatabase.get(pick.player_id);
-        
+
+        // The player database is filtered to roughly the top 500 by search rank and
+        // requires an NFL team, which excludes most defenses, kickers and deep
+        // bench picks. Those picks were counted but never drawn, so the feed just
+        // skipped a pick number with no explanation. Draw what is known instead.
+        if (!player) {
+            this.displayUnknownPick(pick);
+            console.warn(`Pick ${pick.pick_no}: player ${pick.player_id} not in filtered database`);
+            return;
+        }
+
         if (player) {
             // Generate AI analysis for this pick
             const analysis = this.generatePickAnalysis(pick, player);
@@ -1155,160 +1240,29 @@ class DraftTracker {
             positionScarcity[pos] = scarcity;
         });
         
-        // Generate top 3 recommendations with different strategies
-        const recommendations = [];
-        
-        console.log(`🎯 Available players for recommendations:`, availablePlayers.slice(0, 10).map(p => 
-            `${p.name} (${p.position}, ADP: ${p.adp}, ID: ${p.id}, Drafted: ${this.isPlayerDrafted(p.id)})`
-        ));
-        
-        // Strategy 1: Plan Target (if available)
-        if (planTargets.length > 0) {
-            const planTarget = planTargets[0];
-            const posNeed = myRoster.counts[this.normalizePosition(planTarget.position)] || 0;
-            let reasoning = `From your draft plan! ADP: ${planTarget.adp}. You have ${posNeed} ${planTarget.position}${posNeed !== 1 ? 's' : ''}`;
-            let confidence = 95;
-            
-            // Add injury warning if applicable
-            if (planTarget.injuryDesignation) {
-                reasoning += ` ⚠️ ${planTarget.injuryDesignation.toUpperCase()} - monitor status`;
-                confidence -= 8;
-            }
-            
-            recommendations.push({
-                player: planTarget,
-                strategy: '📋 Plan Target',
-                reasoning: reasoning,
-                confidence: confidence
-            });
-        } else {
-            // Strategy 1 Fallback: Best Available Player
-            const bestAvailable = availablePlayers[0];
-            if (bestAvailable) {
-                const posNeed = myRoster.counts[this.normalizePosition(bestAvailable.position)] || 0;
-                let reasoning = `${bestAvailable.name} is the highest ranked player available (ADP: ${bestAvailable.adp}). You have ${posNeed} ${bestAvailable.position}${posNeed !== 1 ? 's' : ''}`;
-                let confidence = 92;
-                
-                // Add injury warning if applicable
-                if (bestAvailable.injuryDesignation) {
-                    reasoning += ` ⚠️ ${bestAvailable.injuryDesignation.toUpperCase()} - monitor status`;
-                    confidence -= 10;
-                }
-                
-                recommendations.push({
-                    player: bestAvailable,
-                    strategy: `🏆 ${bestAvailable.name} (${bestAvailable.position})`,
-                    reasoning: reasoning,
-                    confidence: confidence
-                });
-            }
-        }
-        
-        // Strategy 2: Plan Backup (if plan target taken but backup available)
-        if (planTargets.length === 0 && planBackups.length > 0) {
-            const planBackup = planBackups[0];
-            const posNeed = myRoster.counts[this.normalizePosition(planBackup.position)] || 0;
-            let reasoning = `Backup from your draft plan. ADP: ${planBackup.adp}. You have ${posNeed} ${planBackup.position}${posNeed !== 1 ? 's' : ''}`;
-            let confidence = 88;
-            
-            // Add injury warning if applicable
-            if (planBackup.injuryDesignation) {
-                reasoning += ` ⚠️ ${planBackup.injuryDesignation.toUpperCase()} - monitor status`;
-                confidence -= 8;
-            }
-            
-            recommendations.push({
-                player: planBackup,
-                strategy: '📋 Plan Backup',
-                reasoning: reasoning,
-                confidence: confidence
-            });
-        } else {
-            // Strategy 2 Fallback: Position Scarcity Pick
-            const scarcestPosition = Object.entries(positionScarcity)
-                .sort((a, b) => (a[1].level === 'Critical' ? -1 : 1))
-                .find(([pos, data]) => data.level === 'Critical' || data.level === 'Scarce');
-                
-            if (scarcestPosition) {
-                const [position, scarcityData] = scarcestPosition;
-                const positionPlayer = availablePlayers.find(p => p.position === position);
-                const firstRecommendation = recommendations[0]?.player;
-                if (positionPlayer && positionPlayer !== firstRecommendation) {
-                    let reasoning = `${positionPlayer.name} fills a critical need. ${position} is ${scarcityData.level.toLowerCase()} - only ${scarcityData.remaining} quality players left`;
-                    let confidence = scarcityData.level === 'Critical' ? 88 : 82;
-                    
-                    // Add injury warning if applicable
-                    if (positionPlayer.injuryDesignation) {
-                        reasoning += ` ⚠️ ${positionPlayer.injuryDesignation.toUpperCase()} - monitor status`;
-                        confidence -= 8;
-                    }
-                    
-                    recommendations.push({
-                        player: positionPlayer,
-                        strategy: `⚠️ ${position} Scarcity`,
-                        reasoning: reasoning,
-                        confidence: confidence
-                    });
-                }
-            }
-        }
-        
-        // Strategy 3: Value Pick (player fallen past ADP)
-        const valuePick = availablePlayers.find(player => 
-            player.adp && player.adp < pickNumber - 6 && 
-            player !== bestAvailable && 
-            !recommendations.some(rec => rec.player === player)
-        );
-        
-        if (valuePick) {
-            const fallDistance = pickNumber - valuePick.adp;
-            let reasoning = `Fell ${fallDistance} picks past ADP (${valuePick.adp}) - excellent value`;
-            let confidence = 85;
-            
-            // Add injury warning if applicable
-            if (valuePick.injuryDesignation) {
-                reasoning += ` ⚠️ ${valuePick.injuryDesignation.toUpperCase()} - may explain the fall`;
-                confidence -= 12;
-            }
-            
-            recommendations.push({
-                player: valuePick,
-                strategy: 'Value Pick',
-                reasoning: reasoning,
-                confidence: confidence
-            });
-        }
-        
-        // Fallback: Add next best player if we don't have 3
-        while (recommendations.length < 3 && availablePlayers.length > recommendations.length) {
-            const nextPlayer = availablePlayers[recommendations.length];
-            if (!recommendations.some(rec => rec.player === nextPlayer)) {
-                recommendations.push({
-                    player: nextPlayer,
-                    strategy: 'Safe Pick',
-                    reasoning: `Solid option for round ${currentRound}`,
-                    confidence: 75
-                });
-            }
-        }
-        
-        console.log(`📋 Generated ${recommendations.length} panic recommendations`);
-        // Final validation: Remove any drafted players that slipped through
-        const validRecommendations = recommendations
-            .filter(r => r.player)
-            .filter(rec => {
-                const isDrafted = this.isPlayerDrafted(rec.player.id);
-                if (isDrafted) {
-                    console.warn('⚠️ Removed drafted player from recommendations:', rec.player.name);
-                }
-                return !isDrafted;
-            })
-            .slice(0, 3);
-        
-        console.log(`✅ Final recommendations (${validRecommendations.length}):`, 
+        // Ranking, tiering and run detection live in PickAdvisor. The three
+        // strategies here used to be "your plan", "best available" and "your
+        // plan's backup", which meant two of the three slots just echoed what
+        // you had written before the draft. The advisor reports the board and
+        // the plan as separate opinions and states the gap between them.
+        const advisor = this.pickAdvisor || (this.pickAdvisor = new PickAdvisor(this.configManager));
+
+        const validRecommendations = advisor.recommend({
+            availablePlayers,
+            picks: this.picks,
+            planTargets,
+            planBackups,
+            roster: myRoster,
+            teams: this.draftData?.settings?.teams || this.configManager.config.leagueSize || 12,
+            scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+            playerLookup: pick => this.playerDatabase.get(pick.player_id)
+                || (pick.metadata ? { position: this.normalizePosition(pick.metadata.position) } : null)
+        });
+
+        console.log(`✅ Final recommendations (${validRecommendations.length}):`,
             validRecommendations.map(r => `${r.player.name} - ${r.strategy}`)
         );
-        
+
         // Return recommendations with metadata about data source
         return {
             recommendations: validRecommendations,
@@ -1780,6 +1734,12 @@ class DraftTracker {
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">📊 Live Draft Feed with AI Analysis</h3>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span id="draftFeedUpdated" style="font-size: 0.8em; color: var(--text-secondary);"></span>
+                            <button class="btn btn-sm btn-outline" data-action="refresh-draft" id="refreshDraftBtn">
+                                <span>🔄</span> Refresh
+                            </button>
+                        </div>
                     </div>
                     <div class="draft-feed" id="draftFeed">
                         <div class="empty-state">
@@ -1843,15 +1803,67 @@ class DraftTracker {
         this.updatePositionScarcityDisplay();
     }
 
+    /**
+     * Minimal feed entry for a pick whose player is not in the filtered database -
+     * a defense, a kicker, or anyone outside the top few hundred by search rank.
+     * Sleeper's pick metadata carries enough to name them.
+     */
+    displayUnknownPick(pick) {
+        const feedElement = document.getElementById('draftFeed');
+        if (!feedElement) return;
+
+        this.clearFeedEmptyState(feedElement);
+
+        const meta = pick.metadata || {};
+        const name = [meta.first_name, meta.last_name].filter(Boolean).join(' ')
+            || meta.team
+            || `Player ${pick.player_id}`;
+        const position = meta.position || 'N/A';
+        const team = meta.team || 'FA';
+
+        const pickElement = document.createElement('div');
+        pickElement.className = 'draft-pick-analysis';
+        pickElement.innerHTML = `
+            <div class="pick-item" style="border-left: 4px solid var(--border-color); margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                <div class="pick-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div class="pick-number" style="font-weight: bold; color: var(--accent-color);">Pick ${pick.pick_no}</div>
+                    <div style="font-size: 0.8em; color: var(--text-secondary);">No AI analysis</div>
+                </div>
+                <div class="pick-player">
+                    <strong style="color: var(--text-primary);">${name}</strong>
+                    <span style="color: var(--text-secondary);">(${position} - ${team})</span>
+                </div>
+            </div>
+        `;
+
+        feedElement.insertBefore(pickElement, feedElement.firstChild);
+        this.markFeedUpdated();
+    }
+
+    /** Removes the "Ready for Draft" placeholder once real picks arrive. */
+    clearFeedEmptyState(feedElement) {
+        const placeholder = feedElement.querySelector('.empty-state');
+        if (placeholder) placeholder.remove();
+    }
+
+    /** Timestamps the feed so a stale view is obvious at a glance. */
+    markFeedUpdated() {
+        const stamp = document.getElementById('draftFeedUpdated');
+        if (stamp) {
+            stamp.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+        }
+    }
+
     displayPick(pick, player, analysis) {
         const feedElement = document.getElementById('draftFeed');
         if (!feedElement) return;
-        
-        // Clear empty state if this is first pick
-        if (this.picks.length === 1) {
-            feedElement.innerHTML = '';
-        }
-        
+
+        // Keyed off the placeholder itself rather than this.picks.length, which is
+        // not assigned until after the whole batch is processed - so the old check
+        // never fired and "Ready for Draft" stayed sitting under the live picks.
+        this.clearFeedEmptyState(feedElement);
+        this.markFeedUpdated();
+
         // Use DocumentFragment for better performance
         const fragment = document.createDocumentFragment();
         const pickElement = document.createElement('div');
@@ -2610,11 +2622,16 @@ class DraftTracker {
                 if (['QB', 'TE', 'K', 'DEF'].includes(p.position)) {
                     // Assign reasonable ADP if missing
                     if (!p.adp || p.adp > 500) {
+                        // Deterministic midpoints. These values are written back onto
+                        // the shared player database, so randomising them here left
+                        // every QB, TE, K and DEF with a different ADP each time a
+                        // plan was generated - and the live recommendations sort on
+                        // that same field.
                         const defaultADP = {
-                            'QB': 80 + Math.random() * 40,  // QB 80-120
-                            'TE': 90 + Math.random() * 50,  // TE 90-140  
-                            'K': 180 + Math.random() * 20,  // K 180-200
-                            'DEF': 190 + Math.random() * 20 // DEF 190-210
+                            'QB': 100,
+                            'TE': 115,
+                            'K': 190,
+                            'DEF': 200
                         };
                         p.adp = defaultADP[p.position];
                     }

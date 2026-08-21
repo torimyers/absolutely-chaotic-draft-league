@@ -119,6 +119,9 @@ class EventManager {
                 case 'start-draft-tracking':
                     this.startDraftTracking();
                     break;
+                case 'refresh-draft':
+                    if (this.draftTracker) this.draftTracker.refreshDraftNow();
+                    break;
                 case 'stop-draft-tracking':
                     this.stopDraftTracking();
                     break;
