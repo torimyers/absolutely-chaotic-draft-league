@@ -1018,7 +1018,14 @@ class ConfigManager {
                 warning: '⚠️',
                 info: 'ℹ️'
             };
-            
+
+            // Most callers already lead with a status emoji. The panel adds its own,
+            // so drop a leading duplicate rather than rendering "❌ ❌ ...".
+            const withoutLeadingIcon = String(message).replace(/^\s*(?:\p{Extended_Pictographic}|️|‍)+\s*/u, '');
+            if (withoutLeadingIcon) {
+                message = withoutLeadingIcon;
+            }
+
             notification.innerHTML = `
                 <div style="display: flex; align-items: flex-start; gap: 10px;">
                     <span style="font-size: 1.2em;">${icons[type]}</span>
@@ -1034,13 +1041,23 @@ class ConfigManager {
             
             // Click to dismiss
             notification.addEventListener('click', () => notification.remove());
-            
+
             document.body.appendChild(notification);
-            
+
+            // The bare .notification rule is a hidden state - translateX(100%),
+            // opacity 0, pointer-events none - and .show is what reveals it.
+            // Without this class every toast was built off-screen and invisible,
+            // sat out its whole lifetime there, and only became briefly visible
+            // during the slide-out animation as it was removed. That made the app
+            // look silent while it was in fact reporting errors the entire time,
+            // and made "click to dismiss" impossible.
+            requestAnimationFrame(() => notification.classList.add('show'));
+
             // Auto-dismiss after duration
             setTimeout(() => {
                 if (notification.parentNode) {
-                    notification.style.animation = 'slideOutRight 0.3s ease';
+                    notification.classList.remove('show');
+                    notification.classList.add('hide');
                     setTimeout(() => notification.remove(), 300);
                 }
             }, duration);

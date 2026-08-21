@@ -854,11 +854,14 @@ class EventManager {
             const notification = document.createElement('div');
             notification.className = `notification notification-${type}`;
             notification.textContent = message;
+            // opacity/transform/pointer-events are overridden explicitly: the
+            // .notification class carries a hidden resting state that would
+            // otherwise leave this fallback invisible too.
             notification.style.cssText = `
                 position: fixed; top: 20px; right: 20px; z-index: 9999;
                 padding: 15px 20px; border-radius: 8px; color: white;
                 background: ${type === 'error' ? '#e74c3c' : type === 'warning' ? '#f39c12' : type === 'success' ? '#2ecc71' : '#3498db'};
-                cursor: pointer;
+                cursor: pointer; opacity: 1; transform: none; pointer-events: auto;
             `;
             
             notification.addEventListener('click', () => notification.remove());
