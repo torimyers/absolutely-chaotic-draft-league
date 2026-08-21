@@ -237,6 +237,11 @@ class ConfigManager {
             
             // Check if league exists
             if (!leagueResponse.ok) {
+                // Sleeper league IDs and draft IDs are the same shape, so a bare ID
+                // is genuinely ambiguous. Before giving up, see if it is a draft.
+                const resolvedAsDraft = await this.tryResolveAsDraft(leagueId);
+                if (resolvedAsDraft) return true;
+
                 throw new Error(`League not found. Status: ${leagueResponse.status}`);
             }
             
@@ -343,6 +348,58 @@ class ConfigManager {
             }
             
             this.showNotification(errorMessage, 'error');
+            return false;
+        }
+    }
+
+    /**
+     * Last resort when an ID does not resolve as a league: check whether it is a
+     * draft ID instead. A draft that belongs to a league is adopted as that
+     * league so rosters and turn detection still work; a draft with no league is
+     * a mock draft.
+     */
+    async tryResolveAsDraft(id) {
+        // Adopting a draft's league re-enters loadFromSleeper. Remember what has
+        // already been tried so a self-referential ID cannot loop.
+        this._triedSleeperIds = this._triedSleeperIds || new Set();
+        if (this._triedSleeperIds.has(String(id))) return false;
+        this._triedSleeperIds.add(String(id));
+
+        try {
+            const response = await fetch(`https://api.sleeper.app/v1/draft/${id}`);
+            if (!response.ok) return false;
+
+            const draft = await response.json();
+            if (!draft || !draft.draft_id) return false;
+
+            if (draft.league_id) {
+                console.log('📋 ID was a league draft; adopting league', draft.league_id);
+                this.config.sleeperLeagueId = String(draft.league_id);
+                this.config.sleeperDraftId = null;
+                this.config.isMockDraft = false;
+                this.updateFormFields({ sleeperLeagueId: this.config.sleeperLeagueId });
+                this.showNotification('📋 That was a draft link - loading the league it belongs to...', 'info');
+                return await this.loadFromSleeper();
+            }
+
+            console.log('📋 ID resolved as a mock draft:', draft.draft_id);
+            this.config.sleeperDraftId = String(draft.draft_id);
+            this.config.sleeperLeagueId = '';
+            this.config.isMockDraft = true;
+            this.config.isConfigured = true;
+
+            this.updateFormFields({
+                leagueName: 'Mock Draft',
+                teamName: 'My Mock Team',
+                leagueSize: (draft.settings && draft.settings.teams) || 12,
+                scoringFormat: this.config.scoringFormat || 'Half PPR'
+            });
+
+            this.showNotification('✅ That ID is a mock draft, not a league. Configured - go to Live Draft to start tracking.', 'success');
+            return true;
+
+        } catch (error) {
+            console.warn('Draft fallback failed:', error);
             return false;
         }
     }
