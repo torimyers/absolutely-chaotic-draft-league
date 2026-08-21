@@ -6,11 +6,18 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.sleeper.app; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.sleeper.app https://api.open-meteo.com https://site.api.espn.com; font-src 'self' data:; frame-ancestors 'none';
 
+# These filenames carry no content hash, so a long immutable cache pinned every
+# visitor to whatever code they first loaded - a deploy could not reach them.
+# Revalidation is cheap here: unchanged files answer 304 with no body.
 /*.js
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=0, must-revalidate
 
 /*.css
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Icons are stable and safe to hold for a day.
+/icons/*
+  Cache-Control: public, max-age=86400
 
 /*.html
   Cache-Control: no-cache
