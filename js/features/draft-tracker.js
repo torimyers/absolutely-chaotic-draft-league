@@ -465,11 +465,66 @@ class DraftTracker {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
         }
-        
+
         // Poll every 3 seconds during active draft
         this.updateInterval = setInterval(() => {
             this.updateDraftStatus();
         }, 3000);
+
+        // Browsers throttle background timers hard - a 3 second poll becomes about
+        // one a minute once the tab is hidden. Since the draft itself happens in
+        // Sleeper, this tab is hidden exactly when picks are landing, so catch up
+        // the moment it is looked at again.
+        if (!this.visibilityHandler) {
+            this.visibilityHandler = () => {
+                if (!document.hidden && this.isTracking) {
+                    this.pendingUIUpdate = false;
+                    this.updateDraftStatus();
+                }
+            };
+            document.addEventListener('visibilitychange', this.visibilityHandler);
+        }
+    }
+
+    /**
+     * Manual catch-up. Background throttling means the feed can lag by up to a
+     * minute however carefully the polling is written, so leave the user a way to
+     * force it rather than making them wonder whether it is stuck.
+     */
+    async refreshDraftNow() {
+        const button = document.getElementById('refreshDraftBtn');
+
+        if (!this.draftId) {
+            this.configManager.showNotification('Start draft tracking first', 'warning');
+            return;
+        }
+
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<span>⏳</span> Refreshing...';
+        }
+
+        try {
+            const before = this.picks.length;
+            await this.updateDraftStatus();
+            const added = this.picks.length - before;
+
+            this.markFeedUpdated();
+            this.configManager.showNotification(
+                added > 0
+                    ? `${added} new pick${added === 1 ? '' : 's'} loaded`
+                    : 'Already up to date',
+                added > 0 ? 'success' : 'info'
+            );
+        } catch (error) {
+            console.error('❌ Error refreshing draft:', error);
+            this.configManager.showNotification(`Refresh failed: ${error.message}`, 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<span>🔄</span> Refresh';
+            }
+        }
     }
 
     stopPolling() {
@@ -477,6 +532,12 @@ class DraftTracker {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
         }
+
+        if (this.visibilityHandler) {
+            document.removeEventListener('visibilitychange', this.visibilityHandler);
+            this.visibilityHandler = null;
+        }
+
         this.isTracking = false;
     }
 
@@ -541,21 +602,43 @@ class DraftTracker {
     }
 
     batchUIUpdates() {
-        // Use requestAnimationFrame to batch UI updates for smoother performance
+        // requestAnimationFrame does not fire in a hidden tab, and you draft in
+        // Sleeper with this tab in the background - so the batched updates never
+        // ran, and because the guard had already been set every later call
+        // early-returned too. Apply directly when hidden.
+        if (document.hidden) {
+            this.applyUIUpdates();
+            return;
+        }
+
         if (this.pendingUIUpdate) return;
-        
+
         this.pendingUIUpdate = true;
         requestAnimationFrame(() => {
-            this.updateDraftDisplay();
-            this.checkUserTurn();
-            this.updatePositionScarcityDisplay();
+            this.applyUIUpdates();
             this.pendingUIUpdate = false;
         });
     }
 
+    applyUIUpdates() {
+        this.updateDraftDisplay();
+        this.checkUserTurn();
+        this.updatePositionScarcityDisplay();
+    }
+
     async processPick(pick) {
         const player = this.playerDatabase.get(pick.player_id);
-        
+
+        // The player database is filtered to roughly the top 500 by search rank and
+        // requires an NFL team, which excludes most defenses, kickers and deep
+        // bench picks. Those picks were counted but never drawn, so the feed just
+        // skipped a pick number with no explanation. Draw what is known instead.
+        if (!player) {
+            this.displayUnknownPick(pick);
+            console.warn(`Pick ${pick.pick_no}: player ${pick.player_id} not in filtered database`);
+            return;
+        }
+
         if (player) {
             // Generate AI analysis for this pick
             const analysis = this.generatePickAnalysis(pick, player);
@@ -1780,6 +1863,12 @@ class DraftTracker {
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">📊 Live Draft Feed with AI Analysis</h3>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span id="draftFeedUpdated" style="font-size: 0.8em; color: var(--text-secondary);"></span>
+                            <button class="btn btn-sm btn-outline" data-action="refresh-draft" id="refreshDraftBtn">
+                                <span>🔄</span> Refresh
+                            </button>
+                        </div>
                     </div>
                     <div class="draft-feed" id="draftFeed">
                         <div class="empty-state">
@@ -1843,15 +1932,67 @@ class DraftTracker {
         this.updatePositionScarcityDisplay();
     }
 
+    /**
+     * Minimal feed entry for a pick whose player is not in the filtered database -
+     * a defense, a kicker, or anyone outside the top few hundred by search rank.
+     * Sleeper's pick metadata carries enough to name them.
+     */
+    displayUnknownPick(pick) {
+        const feedElement = document.getElementById('draftFeed');
+        if (!feedElement) return;
+
+        this.clearFeedEmptyState(feedElement);
+
+        const meta = pick.metadata || {};
+        const name = [meta.first_name, meta.last_name].filter(Boolean).join(' ')
+            || meta.team
+            || `Player ${pick.player_id}`;
+        const position = meta.position || 'N/A';
+        const team = meta.team || 'FA';
+
+        const pickElement = document.createElement('div');
+        pickElement.className = 'draft-pick-analysis';
+        pickElement.innerHTML = `
+            <div class="pick-item" style="border-left: 4px solid var(--border-color); margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                <div class="pick-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div class="pick-number" style="font-weight: bold; color: var(--accent-color);">Pick ${pick.pick_no}</div>
+                    <div style="font-size: 0.8em; color: var(--text-secondary);">No AI analysis</div>
+                </div>
+                <div class="pick-player">
+                    <strong style="color: var(--text-primary);">${name}</strong>
+                    <span style="color: var(--text-secondary);">(${position} - ${team})</span>
+                </div>
+            </div>
+        `;
+
+        feedElement.insertBefore(pickElement, feedElement.firstChild);
+        this.markFeedUpdated();
+    }
+
+    /** Removes the "Ready for Draft" placeholder once real picks arrive. */
+    clearFeedEmptyState(feedElement) {
+        const placeholder = feedElement.querySelector('.empty-state');
+        if (placeholder) placeholder.remove();
+    }
+
+    /** Timestamps the feed so a stale view is obvious at a glance. */
+    markFeedUpdated() {
+        const stamp = document.getElementById('draftFeedUpdated');
+        if (stamp) {
+            stamp.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+        }
+    }
+
     displayPick(pick, player, analysis) {
         const feedElement = document.getElementById('draftFeed');
         if (!feedElement) return;
-        
-        // Clear empty state if this is first pick
-        if (this.picks.length === 1) {
-            feedElement.innerHTML = '';
-        }
-        
+
+        // Keyed off the placeholder itself rather than this.picks.length, which is
+        // not assigned until after the whole batch is processed - so the old check
+        // never fired and "Ready for Draft" stayed sitting under the live picks.
+        this.clearFeedEmptyState(feedElement);
+        this.markFeedUpdated();
+
         // Use DocumentFragment for better performance
         const fragment = document.createDocumentFragment();
         const pickElement = document.createElement('div');
