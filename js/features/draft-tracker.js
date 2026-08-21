@@ -61,9 +61,45 @@ class DraftTracker {
         
         // Load player database for AI analysis (async)
         await this.loadPlayerDatabase();
+        await this.loadProjections();
         this.initializeAudio();
         
         console.log('✅ DraftTracker: Full initialization complete');
+    }
+
+    /**
+     * Season projections, used to rank players by what they are expected to
+     * score rather than by where the room drafts them.
+     *
+     * Entirely optional. The season-aggregate endpoint is undocumented and may
+     * not exist for a given year, and before the season starts there may be no
+     * data at all - in which case the advisor stays on its modelled curves and
+     * says so, rather than treating a missing projection as a projection of zero.
+     */
+    async loadProjections() {
+        this.projections = null;
+
+        try {
+            const state = await this.sleeperAPI.fetchAPI('/state/nfl').catch(() => null);
+            const season = (state && (state.season || state.league_season))
+                || String(new Date().getFullYear());
+
+            this.projections = await this.sleeperAPI.getSeasonProjections(season);
+
+            if (this.projections) {
+                const count = Object.keys(this.projections).length;
+                console.log(`📈 Loaded season projections for ${count} players (${season})`);
+                this.configManager.showNotification(
+                    `Projections loaded for ${count.toLocaleString()} players - rankings now use projected points`,
+                    'success'
+                );
+            } else {
+                console.log(`📈 No season projections available for ${season}; using modelled curves`);
+            }
+        } catch (error) {
+            console.warn('⚠️ Projection load failed, falling back to modelled curves:', error);
+            this.projections = null;
+        }
     }
 
     async loadPlayerDatabase() {
@@ -1256,7 +1292,15 @@ class DraftTracker {
             teams: this.draftData?.settings?.teams || this.configManager.config.leagueSize || 12,
             scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
             playerLookup: pick => this.playerDatabase.get(pick.player_id)
-                || (pick.metadata ? { position: this.normalizePosition(pick.metadata.position) } : null)
+                || (pick.metadata ? { position: this.normalizePosition(pick.metadata.position) } : null),
+            projections: this.projections,
+            // Measured across the whole player database, not the shrinking board.
+            replacementBaselines: advisor.computeReplacementBaselines(
+                Array.from(this.playerDatabase.values()),
+                this.projections,
+                this.draftData?.settings?.teams || this.configManager.config.leagueSize || 12,
+                this.configManager.config.scoringFormat || 'Half PPR'
+            )
         });
 
         console.log(`✅ Final recommendations (${validRecommendations.length}):`,
