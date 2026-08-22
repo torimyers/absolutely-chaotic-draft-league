@@ -1,8 +1,8 @@
-# Refreshes the cached NFL player database in D1 once a day.
+# Refreshes the cached NFL player database once a day.
 #
 # Separate from the Pages project because Pages Functions cannot run on a Cron
-# Trigger. Both bind the same D1 database: this Worker writes it, the Pages
-# Function at /api/players reads it.
+# Trigger. It shares the site's D1 database: this Worker writes the `players`
+# and `player_cache_meta` tables, the Pages Function at /api/players reads them.
 #
 # Deploy:  npx wrangler deploy --config workers/player-sync/wrangler.toml
 # Secret:  npx wrangler secret put REFRESH_SECRET --config workers/player-sync/wrangler.toml
@@ -16,10 +16,20 @@ compatibility_date = "2024-09-23"
 [triggers]
 crons = ["12 9 * * *"]
 
-[[d1_databases]]
-binding = "DB"
-database_name = "fantasy-players"
-# Replace with the id printed by: npx wrangler d1 create fantasy-players
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+# D1 binding, DISABLED until someone sets it up.
+#
+# Left commented out for the same reason as the one in the repository's
+# wrangler.toml: naming a database that is missing from the account fails the
+# deployment, and the player cache is optional. Without the binding this Worker
+# deploys and its refresh answers "No D1 binding named DB", while the site keeps
+# fetching from Sleeper directly - the intended unconfigured behaviour.
+#
+# To enable it, uncomment the block below and paste in the ID printed by
+# `wrangler d1 create fantasy-profiles` - the same database the site uses.
+#
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "fantasy-profiles"
+# database_id = "paste-the-id-from-wrangler-d1-create-here"
 
 # REFRESH_SECRET is a secret, not a var - set it with `wrangler secret put`.

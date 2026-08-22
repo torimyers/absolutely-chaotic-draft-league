@@ -103,7 +103,7 @@ export async function onRequestGet({ request, env }) {
 }
 
 async function readMeta(db) {
-    const { results } = await db.prepare('SELECT key, value FROM meta').all();
+    const { results } = await db.prepare('SELECT key, value FROM player_cache_meta').all();
     const byKey = Object.fromEntries(results.map(r => [r.key, r.value]));
 
     const generation = Number.parseInt(byKey.current_generation, 10);

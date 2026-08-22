@@ -1,0 +1,17 @@
+{
+  "name": "absolutely-chaotic-draft-league",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fantasy Football Command Center - a static Sleeper draft assistant. The site itself has no build step; these dependencies exist only to run the test suite.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run.mjs",
+    "serve": "wrangler pages dev .",
+    "setup:local-db": "wrangler d1 execute fantasy-profiles --local --file=./schema.sql"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1",
+    "wrangler": "^4.125.0"
+  }
+}

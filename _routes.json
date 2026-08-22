@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "description": "Only the sync API runs through Pages Functions. Without this, Cloudflare invokes the Functions runtime for every request - including all the static HTML, CSS and JS - which costs an invocation and a little latency on each one for no benefit. Everything outside /api/* is served straight from the CDN as before.",
   "include": ["/api/*"],
   "exclude": []
 }

@@ -145,11 +145,11 @@ async function refresh(env, trigger) {
     // Publishing the generation is the commit point. Everything before it is
     // invisible to readers; everything after it is cleanup.
     await env.DB.batch([
-        env.DB.prepare("INSERT INTO meta (key, value) VALUES ('current_generation', ?) " +
+        env.DB.prepare("INSERT INTO player_cache_meta (key, value) VALUES ('current_generation', ?) " +
             'ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(String(generation)),
-        env.DB.prepare("INSERT INTO meta (key, value) VALUES ('refreshed_at', ?) " +
+        env.DB.prepare("INSERT INTO player_cache_meta (key, value) VALUES ('refreshed_at', ?) " +
             'ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(refreshedAt),
-        env.DB.prepare("INSERT INTO meta (key, value) VALUES ('player_count', ?) " +
+        env.DB.prepare("INSERT INTO player_cache_meta (key, value) VALUES ('player_count', ?) " +
             'ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(String(written))
     ]);
 
@@ -169,7 +169,7 @@ async function refresh(env, trigger) {
 }
 
 async function currentGeneration(db) {
-    const row = await db.prepare("SELECT value FROM meta WHERE key = 'current_generation'").first();
+    const row = await db.prepare("SELECT value FROM player_cache_meta WHERE key = 'current_generation'").first();
     const generation = row ? Number.parseInt(row.value, 10) : NaN;
     return Number.isInteger(generation) ? generation : 0;
 }

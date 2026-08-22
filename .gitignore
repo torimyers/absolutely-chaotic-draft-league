@@ -51,5 +51,5 @@ coverage/
 # Docker
 docker-compose.override.yml
 .docker/
-# Wrangler local state (miniflare's local D1, KV and build output)
+# Wrangler local state (local D1 database, caches) from `wrangler pages dev`
 .wrangler/

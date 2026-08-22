@@ -70,7 +70,9 @@ class SleeperAPI {
             // deserialising megabytes of their own copy.
             if (persist && useCache) {
                 const stored = await this.persistence().get(cacheKey, maxAge);
-                if (stored) {
+                // An older build may have persisted something this one considers
+                // malformed, so stored data is validated like fresh data.
+                if (stored && (!options.validate || options.validate(stored.data))) {
                     this.cache.set(cacheKey, {
                         data: stored.data,
                         timestamp: stored.timestamp
@@ -84,6 +86,16 @@ class SleeperAPI {
             const data = options.preferURL
                 ? await this.fetchPreferred(options.preferURL, endpoint)
                 : await this.fetchJSON(`${this.baseURL}${endpoint}`);
+
+            // Validated before it is cached anywhere. Storing a malformed
+            // payload would hand it back for the next 24 hours, long after the
+            // upstream problem had passed.
+            if (options.validate && !options.validate(data)) {
+                throw new SleeperAPI.InvalidPayloadError(
+                    `${endpoint} returned ${Array.isArray(data) ? 'an array' : typeof data}`
+                );
+            }
+
             const timestamp = Date.now();
 
             // Cache the response
@@ -206,13 +218,30 @@ class SleeperAPI {
      * dominates startup, so this is the one that earns a persistent cache. The
      * contents - team, position, injury status - move on a daily cadence, which
      * is what sets the 24 hour lifetime.
+     *
+     * Always resolves to an object keyed by player ID - the shape every caller
+     * assumes when it does `allPlayers[id]` or `Object.values(allPlayers)`. A
+     * malformed success used to reach those call sites and throw. A failed
+     * request still rejects.
      */
     async getAllPlayers() {
-        return this.fetchAPI('/players/nfl', true, {
-            maxAge: SleeperAPI.PLAYER_CACHE_MAX_AGE,
-            persist: true,
-            preferURL: SleeperAPI.PLAYER_CACHE_URL
-        });
+        try {
+            return await this.fetchAPI('/players/nfl', true, {
+                maxAge: SleeperAPI.PLAYER_CACHE_MAX_AGE,
+                persist: true,
+                preferURL: SleeperAPI.PLAYER_CACHE_URL,
+                validate: SleeperAPI.isPlayerMap
+            });
+        } catch (error) {
+            // Only a shape failure becomes an empty map. A network or HTTP
+            // failure still rejects, so callers can tell "Sleeper is down" from
+            // "Sleeper answered with something unusable".
+            if (error instanceof SleeperAPI.InvalidPayloadError) {
+                console.warn('⚠️ Sleeper returned no usable player database:', error.message);
+                return {};
+            }
+            throw error;
+        }
     }
 
     /**
@@ -231,10 +260,28 @@ class SleeperAPI {
     }
 
     /**
-     * Get trending players (adds/drops)
+     * Get trending players (adds/drops).
+     *
+     * Always resolves to an array of row objects. Every caller iterates the
+     * result - `.map`, `.forEach`, `.find`, `for...of` - and Sleeper normally
+     * answers with an array, but an outage or an error page can put an object
+     * or null there instead. Iterating that threw straight out of a manager's
+     * initialize(), and a guard like `(rows || []).forEach` does not help: the
+     * bad value is a truthy object, not a nullish one.
+     *
+     * A failed request still rejects, so the callers that surface an error
+     * state keep doing so. Only a malformed success is flattened, and rows that
+     * are not objects are dropped so `row.player_id` is always safe to read.
      */
     async getTrendingPlayers(type = 'add', lookback = 24, limit = 25) {
-        return this.fetchAPI(`/players/nfl/trending/${type}?lookback_hours=${lookback}&limit=${limit}`);
+        const rows = await this.fetchAPI(`/players/nfl/trending/${type}?lookback_hours=${lookback}&limit=${limit}`);
+
+        if (!Array.isArray(rows)) {
+            console.warn(`⚠️ Sleeper returned no usable trending "${type}" data:`, rows);
+            return [];
+        }
+
+        return rows.filter(row => row && typeof row === 'object');
     }
 
     /**
@@ -435,6 +482,14 @@ SleeperAPI.PLAYER_CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
 // and refreshed once a day by workers/player-sync. Absent on a static-only
 // deploy, in which case getAllPlayers falls back to Sleeper.
 SleeperAPI.PLAYER_CACHE_URL = '/api/players';
+
+/** Thrown when a response parses but is not the shape callers rely on. */
+SleeperAPI.InvalidPayloadError = class InvalidPayloadError extends Error {};
+
+// An array would survive Object.values() but break every lookup by id, so it is
+// rejected here rather than half-working downstream.
+SleeperAPI.isPlayerMap = data =>
+    Boolean(data) && typeof data === 'object' && !Array.isArray(data);
 
 // Stand-in used when persistent-cache.js is absent: every lookup misses, every
 // write is discarded, and the in-memory cache carries the page on its own.
