@@ -113,10 +113,19 @@ curl -i "https://texasperfect.win/api/profile?userId=123456789012"
 
 ```bash
 npx wrangler d1 execute fantasy-profiles --local --file=./schema.sql
-npx wrangler pages dev . --d1=DB=<your-database-id>
+npm run serve
 ```
 
-Local state lives in `.wrangler/` and is gitignored.
+Local state lives in `.wrangler/` and is gitignored. `npm test` runs against its
+own throwaway copy and never touches it.
+
+### A binding NOT to set in production
+
+The Functions read an optional `SLEEPER_API_BASE` binding, which exists so the
+test suite can point them at a stub instead of the real Sleeper. Leave it unset
+everywhere except tests - unset means the real API, which is what every
+deployment wants. Setting it in production would send account lookups somewhere
+other than Sleeper.
 
 ## Step 3: Verify Deployment
 
@@ -127,6 +136,8 @@ Local state lives in `.wrangler/` and is gitignored.
    - Service worker registers properly
    - Sleeper API calls work
    - Your league setup survives a refresh (it should never re-prompt for it)
+3. Run `npm test` locally before deploying anything non-trivial - it covers the
+   sync endpoints and the startup path end to end
 
 ## Security Features Included
 

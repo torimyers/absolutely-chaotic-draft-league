@@ -66,6 +66,7 @@ Analysis" button, and is banner-labelled on the page.
 
 ## 🛠️ Tech Stack
 
+- **Tests**: Playwright driving the real app under `wrangler pages dev` (`npm test`)
 - **Frontend**: Vanilla JavaScript with modern ES6+
 - **Styling**: Custom CSS with CSS Grid and Flexbox
 - **APIs**: Sleeper (league, rosters, players), Open-Meteo (weather), ESPN (NFL schedule) - all keyless, no signup required
@@ -86,7 +87,8 @@ Visit [https://texasperfect.win](https://texasperfect.win) to use the hosted ver
    cd absolutely-chaotic-draft-league
    ```
 
-2. **No build process needed!** This is a static site. Simply:
+2. **No build process needed!** This is a static site - `npm install` is only
+   needed to run the tests. Simply:
    - Open `index.html` in a browser, or
    - Use a local server: `python -m http.server 8000`
    - Visit `http://localhost:8000`
@@ -194,15 +196,52 @@ Self-hosters get the local-only behaviour for free: without a D1 binding the syn
 endpoints answer `503` and the app carries on using local storage. See
 [DEPLOYMENT.md](DEPLOYMENT.md) to enable it.
 
+## 🧪 Tests
+
+End-to-end tests drive the real app in a headless browser, served by
+`wrangler pages dev` so the Pages Functions, the D1 binding and the routing
+rules all take part.
+
+```bash
+npm install
+npx playwright install chromium   # one-off
+npm test
+```
+
+Nothing reaches the network. Sleeper, ESPN and Open-Meteo are intercepted in the
+browser, and the Functions' own Sleeper calls go to a stub over the test-only
+`SLEEPER_API_BASE` binding, so a run behaves the same on a laptop, in CI and
+offline. D1 state goes to a throwaway directory and is deleted afterwards.
+
+```bash
+npm test -- sync          # only suites matching "sync"
+npm test -- --headed      # watch it happen in a real window
+npm test -- --verbose     # include wrangler's own output
+```
+
+If Chromium is already on the machine, `CHROMIUM_EXECUTABLE=/path/to/chrome`
+skips the Playwright download.
+
+| Suite | What it pins down |
+|---|---|
+| `persistence` | The league setup survives a refresh, and a returning user is never re-prompted |
+| `profile-api` | The sync endpoints: account verification, the field whitelist, write ordering, malformed input, routing |
+| `startup-resilience` | One feature failing to start cannot take the event handling or the other features with it |
+| `api-shapes` | A malformed Sleeper response degrades a feature instead of breaking it |
+
+Each suite is written against a bug that actually shipped, and each one fails if
+you revert the fix for it.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes:
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+3. Run `npm test` and make sure it is green
+4. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+5. Push to the branch (`git push origin feature/AmazingFeature`)
+6. Open a Pull Request
 
 ## 📄 License
 

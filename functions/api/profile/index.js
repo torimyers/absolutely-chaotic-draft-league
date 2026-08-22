@@ -13,8 +13,7 @@
 
 import { json, notAllowed, readJsonBody } from '../../../lib/http.js';
 import { isSleeperUserId, sanitizeConfig } from '../../../lib/profile-schema.js';
-
-const SLEEPER_USER_URL = 'https://api.sleeper.app/v1/user/';
+import { sleeperUserUrl } from '../../../lib/sleeper.js';
 
 /**
  * How far ahead of the server a client's clock may be before its timestamp is
@@ -113,7 +112,7 @@ export async function onRequestPut(context) {
     let resolvedUsername = typeof username === 'string' ? username.trim().slice(0, 64) : '';
 
     if (!existing) {
-        const verified = await verifySleeperUser(id);
+        const verified = await verifySleeperUser(context.env, id);
         if (!verified.ok) return json({ error: verified.error }, verified.status);
         resolvedUsername = verified.username;
     } else if (!resolvedUsername) {
@@ -151,10 +150,10 @@ export async function onRequestPut(context) {
 }
 
 /** Confirms a user_id belongs to a real Sleeper account. */
-async function verifySleeperUser(userId) {
+async function verifySleeperUser(env, userId) {
     let response;
     try {
-        response = await fetch(SLEEPER_USER_URL + encodeURIComponent(userId), {
+        response = await fetch(sleeperUserUrl(env, userId), {
             headers: { accept: 'application/json' }
         });
     } catch (error) {

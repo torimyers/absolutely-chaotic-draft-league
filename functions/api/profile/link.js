@@ -15,8 +15,7 @@
  */
 
 import { json, notAllowed, readJsonBody } from '../../../lib/http.js';
-
-const SLEEPER_USER_URL = 'https://api.sleeper.app/v1/user/';
+import { sleeperUserUrl } from '../../../lib/sleeper.js';
 
 /** Sleeper usernames are short and alphanumeric-ish; reject anything else early. */
 const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/;
@@ -37,7 +36,7 @@ export async function onRequestPost(context) {
 
     let response;
     try {
-        response = await fetch(SLEEPER_USER_URL + encodeURIComponent(username), {
+        response = await fetch(sleeperUserUrl(context.env, username), {
             headers: { accept: 'application/json' }
         });
     } catch (error) {
