@@ -8,7 +8,7 @@
   "scripts": {
     "test": "node tests/run.mjs",
     "serve": "wrangler pages dev .",
-    "setup:test-db": "wrangler d1 execute fantasy-profiles --local --file=./schema.sql"
+    "setup:local-db": "wrangler d1 execute fantasy-profiles --local --file=./schema.sql"
   },
   "devDependencies": {
     "playwright": "^1.62.1",

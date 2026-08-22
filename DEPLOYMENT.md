@@ -71,8 +71,13 @@ is username-keyed sync, not a password-protected account.
 npx wrangler d1 create fantasy-profiles
 ```
 
-Copy the `database_id` it prints into `wrangler.toml`, replacing
-`PLACEHOLDER_RUN_WRANGLER_D1_CREATE`.
+Then uncomment the `[[d1_databases]]` block at the bottom of `wrangler.toml` and
+paste in the `database_id` it printed.
+
+That block ships commented out on purpose. A Pages build that reads a binding
+for a database missing from the account fails outright, so leaving a placeholder
+ID in there would make the repository undeployable for anyone who has not done
+this step.
 
 ### 2.5.2 Create the table
 
@@ -112,12 +117,20 @@ curl -i "https://texasperfect.win/api/profile?userId=123456789012"
 ### Running it locally
 
 ```bash
-npx wrangler d1 execute fantasy-profiles --local --file=./schema.sql
 npm run serve
 ```
 
-Local state lives in `.wrangler/` and is gitignored. `npm test` runs against its
-own throwaway copy and never touches it.
+With the binding commented out this serves the site with sync unconfigured -
+the endpoints answer 503, exactly as a fresh deployment does. To exercise sync
+locally, uncomment the block and seed a local database:
+
+```bash
+npx wrangler d1 execute fantasy-profiles --local --file=./schema.sql
+```
+
+Local state lives in `.wrangler/` and is gitignored. `npm test` needs none of
+this: it carries its own binding in `tests/wrangler.test.toml` and runs against
+a throwaway database.
 
 ### A binding NOT to set in production
 

@@ -75,17 +75,37 @@ async function main() {
         });
         console.log(`Serving ${site.baseUrl}\n`);
 
-        const results = [];
-        for (const suite of suites) {
-            console.log(`${suite.name}`);
-            const t = new Checks(suite.name);
-            try {
-                await suite.module.run({ browser, baseUrl: site.baseUrl, sleeper, t });
-            } catch (error) {
-                t.check(`the suite ran to completion`, false, error.stack || error.message);
+        // A second site with no D1 binding, booted only if a suite asks for it -
+        // it costs another wrangler startup. This is how the repository ships and
+        // how any deployment that has not set sync up behaves.
+        let unbound = null;
+        const startUnboundSite = async () => {
+            if (!unbound) {
+                console.log('  (booting a second site with no D1 binding...)');
+                unbound = await startSite({
+                    repoRoot, sleeperBaseUrl: sleeper.baseUrl, withDatabase: false, log
+                });
             }
-            results.push(t);
-            console.log('');
+            return unbound;
+        };
+
+        const results = [];
+        try {
+            for (const suite of suites) {
+                console.log(`${suite.name}`);
+                const t = new Checks(suite.name);
+                try {
+                    await suite.module.run({
+                        browser, baseUrl: site.baseUrl, sleeper, t, startUnboundSite
+                    });
+                } catch (error) {
+                    t.check(`the suite ran to completion`, false, error.stack || error.message);
+                }
+                results.push(t);
+                console.log('');
+            }
+        } finally {
+            if (unbound) await unbound.stop().catch(() => {});
         }
 
         return report(results);

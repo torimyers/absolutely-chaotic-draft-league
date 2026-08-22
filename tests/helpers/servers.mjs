@@ -14,6 +14,20 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+/**
+ * The repository's wrangler.toml deliberately ships with no D1 binding: naming a
+ * database that is missing from the account makes a Pages deployment fail, and
+ * sync is optional. The binding the API tests need lives in a test-only config
+ * instead.
+ *
+ * `wrangler d1 execute` reads that config to resolve the database by name.
+ * `wrangler pages dev` refuses a custom --config path, so it is handed the same
+ * ID on the command line. Local D1 files are keyed by the ID, so the two agree.
+ */
+const TEST_CONFIG = 'tests/wrangler.test.toml';
+const TEST_DB_NAME = 'fantasy-profiles-test';
+const TEST_DB_ID = 'fantasy-profiles-test-local';
+
 const WRANGLER_START_TIMEOUT_MS = 120_000;
 
 /** Asks the OS for a free port, so parallel runs and busy dev boxes do not clash. */
@@ -86,18 +100,26 @@ export async function startFakeSleeper(accounts = []) {
  *
  * D1 state goes to a throwaway directory so a run never touches the developer's
  * own `.wrangler/` store, and the schema is applied to that same directory
- * first. Both wrangler invocations resolve the database from `wrangler.toml`,
- * so they agree on which local file to use without the ports or IDs being
- * restated here.
+ * first.
+ *
+ * `withDatabase: false` boots the site with no D1 binding at all, which is how
+ * the repository ships and how any deployment that has not set sync up behaves.
  */
-export async function startSite({ repoRoot, sleeperBaseUrl, log = () => {} }) {
+export async function startSite({ repoRoot, sleeperBaseUrl, withDatabase = true, log = () => {} }) {
     const persistTo = await mkdtemp(join(tmpdir(), 'accd-tests-'));
 
-    await runWrangler(
-        repoRoot,
-        ['d1', 'execute', 'fantasy-profiles', '--local', '--persist-to', persistTo, '--yes', '--file=./schema.sql'],
-        log
-    );
+    if (withDatabase) {
+        await runWrangler(
+            repoRoot,
+            [
+                'd1', 'execute', TEST_DB_NAME,
+                '--config', TEST_CONFIG,
+                '--local', '--persist-to', persistTo,
+                '--yes', '--file=./schema.sql'
+            ],
+            log
+        );
+    }
 
     const port = await freePort();
     const child = spawn(
@@ -106,6 +128,9 @@ export async function startSite({ repoRoot, sleeperBaseUrl, log = () => {} }) {
             wranglerBin(repoRoot),
             'pages', 'dev', '.',
             '--port', String(port),
+            // Omitted deliberately when withDatabase is false, to reproduce a
+            // deployment where sync was never set up.
+            ...(withDatabase ? ['--d1', `DB=${TEST_DB_ID}`] : []),
             '--persist-to', persistTo,
             '--binding', `SLEEPER_API_BASE=${sleeperBaseUrl}`
         ],

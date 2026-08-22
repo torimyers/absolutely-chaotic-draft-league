@@ -21,7 +21,7 @@ export const sleeperAccounts = [
 const KNOWN_ID = '555000111222';
 const UNKNOWN_BUT_WELL_FORMED_ID = '999888777666';
 
-export async function run({ baseUrl, t }) {
+export async function run({ baseUrl, t, startUnboundSite }) {
     const call = async (path, init) => {
         const response = await fetch(`${baseUrl}${path}`, init);
         let body = null;
@@ -154,6 +154,27 @@ export async function run({ baseUrl, t }) {
         t.equal('DELETE is not allowed', (await call('/api/profile', { method: 'DELETE' })).status, 405);
         t.equal('a body that is not JSON is rejected',
             (await call('/api/profile', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: 'not json' })).status, 400);
+    }
+
+    t.describe('A deployment with sync never set up');
+    {
+        // How the repository ships: wrangler.toml declares no D1 binding, because
+        // one naming a database missing from the account fails the Pages build.
+        // The endpoints have to say so cleanly and the site has to keep working.
+        const unbound = await startUnboundSite();
+
+        const read = await fetch(`${unbound.baseUrl}/api/profile?userId=${KNOWN_ID}`);
+        t.equal('reading a profile reports sync as unconfigured', read.status, 503);
+
+        const write = await fetch(`${unbound.baseUrl}/api/profile`, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ userId: KNOWN_ID, config: { leagueName: 'x' }, updatedAt: Date.now() })
+        });
+        t.equal('writing one does too', write.status, 503);
+
+        const site = await fetch(`${unbound.baseUrl}/index.html`);
+        t.equal('and the site itself still serves', site.status, 200);
     }
 
     t.describe('Routing');
