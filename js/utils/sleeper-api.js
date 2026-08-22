@@ -17,19 +17,37 @@ class SleeperAPI {
     }
 
     /**
+     * The IndexedDB layer, or a no-op stand-in.
+     *
+     * persistent-cache.js is a separate script tag. If it fails to load, the app
+     * should lose persistence and nothing else, so the reference is resolved at
+     * call time rather than assumed to exist.
+     */
+    persistence() {
+        return typeof persistentCache !== 'undefined' ? persistentCache : SleeperAPI.noopCache;
+    }
+
+    /**
      * Generic API fetch with caching.
      *
      * Managers all initialise at once, so a plain cache does not help on startup:
      * nothing has resolved yet when the second caller arrives. Concurrent callers
      * therefore share one in-flight promise per endpoint.
+     *
+     * `options.maxAge` overrides how long a cached entry stays usable, and
+     * `options.persist` additionally routes the endpoint through IndexedDB so it
+     * survives a reload. Persistence is opt-in: it only pays for itself on
+     * payloads that are large and change slowly.
      */
-    async fetchAPI(endpoint, useCache = true) {
+    async fetchAPI(endpoint, useCache = true, options = {}) {
         const cacheKey = endpoint;
+        const maxAge = options.maxAge || this.cacheTimeout;
+        const persist = options.persist === true;
 
         // Check cache first
         if (useCache && this.cache.has(cacheKey)) {
             const cached = this.cache.get(cacheKey);
-            if (Date.now() - cached.timestamp < this.cacheTimeout) {
+            if (Date.now() - cached.timestamp < maxAge) {
                 console.log(`📦 Using cached data for: ${endpoint}`);
                 return cached.data;
             }
@@ -42,6 +60,22 @@ class SleeperAPI {
         }
 
         const request = (async () => {
+            // The IndexedDB read happens inside the in-flight promise, not before
+            // it, so callers arriving during the read join it rather than each
+            // deserialising megabytes of their own copy.
+            if (persist && useCache) {
+                const stored = await this.persistence().get(cacheKey, maxAge);
+                if (stored) {
+                    this.cache.set(cacheKey, {
+                        data: stored.data,
+                        timestamp: stored.timestamp
+                    });
+                    const ageHours = ((Date.now() - stored.timestamp) / 3600000).toFixed(1);
+                    console.log(`💾 Restored ${endpoint} from IndexedDB (${ageHours}h old)`);
+                    return stored.data;
+                }
+            }
+
             const response = await fetch(`${this.baseURL}${endpoint}`);
 
             if (!response.ok) {
@@ -49,12 +83,14 @@ class SleeperAPI {
             }
 
             const data = await response.json();
+            const timestamp = Date.now();
 
             // Cache the response
-            this.cache.set(cacheKey, {
-                data,
-                timestamp: Date.now()
-            });
+            this.cache.set(cacheKey, { data, timestamp });
+
+            // Deliberately not awaited: the data is already in hand, and cloning
+            // it into IndexedDB should not delay the render.
+            if (persist) this.persistence().set(cacheKey, data, timestamp);
 
             return data;
         })();
@@ -121,21 +157,18 @@ class SleeperAPI {
     }
 
     /**
-     * Get all NFL players (large dataset, cached for longer)
+     * Get all NFL players.
+     *
+     * Roughly 5 MB, and the only endpoint the app uses where the download
+     * dominates startup, so this is the one that earns a persistent cache. The
+     * contents - team, position, injury status - move on a daily cadence, which
+     * is what sets the 24 hour lifetime.
      */
     async getAllPlayers() {
-        const cacheKey = '/players/nfl';
-        
-        // Check for longer cache (24 hours for player data)
-        if (this.cache.has(cacheKey)) {
-            const cached = this.cache.get(cacheKey);
-            if (Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
-                console.log('📦 Using cached player database');
-                return cached.data;
-            }
-        }
-        
-        return this.fetchAPI('/players/nfl', false);
+        return this.fetchAPI('/players/nfl', true, {
+            maxAge: SleeperAPI.PLAYER_CACHE_MAX_AGE,
+            persist: true
+        });
     }
 
     /**
@@ -277,10 +310,14 @@ class SleeperAPI {
     }
 
     /**
-     * Clear cache (useful for forcing fresh data)
+     * Clear cache (useful for forcing fresh data).
+     *
+     * Clears IndexedDB too - leaving it behind would mean the next reload
+     * restored exactly the data the caller asked to discard.
      */
-    clearCache() {
+    async clearCache() {
         this.cache.clear();
+        await this.persistence().clear();
         console.log('🧹 Sleeper API cache cleared');
     }
 
@@ -346,6 +383,18 @@ class SleeperAPI {
 // One cache and one in-flight map for every instance in the page.
 SleeperAPI.sharedCache = new Map();
 SleeperAPI.sharedInFlight = new Map();
+
+// How long the player database stays usable, in memory and in IndexedDB alike.
+SleeperAPI.PLAYER_CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
+
+// Stand-in used when persistent-cache.js is absent: every lookup misses, every
+// write is discarded, and the in-memory cache carries the page on its own.
+SleeperAPI.noopCache = {
+    get: async () => null,
+    set: async () => false,
+    delete: async () => false,
+    clear: async () => false
+};
 
 // Create singleton instance
 const sleeperAPI = new SleeperAPI();

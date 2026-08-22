@@ -71,6 +71,7 @@ Analysis" button, and is banner-labelled on the page.
 - **APIs**: Sleeper (league, rosters, players), Open-Meteo (weather), ESPN (NFL schedule) - all keyless, no signup required
 - **Hosting**: Cloudflare Pages
 - **PWA**: Installable with offline support
+- **Caching**: In-memory per page, plus IndexedDB for the ~5 MB player database so it is not re-downloaded on every load
 
 ## 📦 Quick Start
 
@@ -151,7 +152,7 @@ The app is fully installable on mobile devices:
 
 ## 🔒 Privacy & Security
 
-- **No server-side storage** - All data stays in your browser
+- **No server-side storage** - All data stays in your browser. Settings live in localStorage and the cached NFL player database lives in IndexedDB, both of which the browser's "clear site data" removes
 - **Secure API calls** - Direct HTTPS to Sleeper, Open-Meteo and ESPN. No credentials or personal data are sent to any of them; requests carry only a league ID, a week number or a pair of coordinates
 - **No tracking** - No analytics or user tracking
 - **Open source** - Audit the code yourself
