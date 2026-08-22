@@ -460,3 +460,11 @@
         box-shadow: 0 0 0 4px rgba(78, 205, 196, 0.2);
     }
 }
+/* Short clarifying note under a control, for settings people confuse with each other */
+.form-hint {
+    display: block;
+    margin-top: var(--space-xs);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm, 0.85rem);
+    line-height: 1.4;
+}

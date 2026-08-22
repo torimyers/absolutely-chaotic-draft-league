@@ -10,16 +10,23 @@
  * markedly better than anything left at the position. Value over replacement
  * captures that difference, and it is what drives the board recommendation here.
  *
- * Three signals combine:
- *   - VOR, from a projected-points curve per position
+ * Four signals combine:
+ *   - VOR, from projected points against a league-wide replacement level
  *   - tier cliffs, so a last-player-in-tier is flagged before the drop
  *   - positional runs in the live pick feed, so a thinning position is visible
+ *   - the gap between projection and ADP, which is where bargains live
  *
- * Sleeper publishes no projections, so points come from anchored curves per
- * position rather than a real projection source. They are calibrated to typical
- * half-PPR season totals and interpolated between anchors. That makes them
- * honest about relative shape - the steep early running-back decline, the flat
- * quarterback middle - without pretending to be a forecast for any one player.
+ * Points come from Sleeper's own projections when they are available, selected
+ * for the league's scoring format. When they are not - the endpoint is
+ * undocumented and may be empty before a season starts - the anchored curves
+ * below are used instead. Every valued player records which source was used, and
+ * a position falls back wholesale rather than mixing the two, since measured and
+ * modelled points are not on the same scale and the difference between them
+ * would otherwise read as value.
+ *
+ * The curves are calibrated to typical half-PPR season totals. They are honest
+ * about relative shape - the steep early running-back decline, the flat
+ * quarterback middle - without pretending to forecast any individual player.
  */
 
 class PickAdvisor {
@@ -91,18 +98,14 @@ class PickAdvisor {
     /**
      * The rank at which a position stops being startable, which is where
      * "replacement level" sits. Flex demand is shared between running backs and
-     * receivers, so both replacement lines sit deeper than their starter counts.
+     * receivers, so both replacement lines sit deeper than their starter counts,
+     * and a Super Flex roster pushes the quarterback line deeper still.
+     *
+     * Delegates to PlayerStats so the draft board and the season-long analysis
+     * cannot disagree about who counts as a startable player.
      */
-    getReplacementRank(position, teams) {
-        const t = teams || 12;
-        return {
-            QB: t,
-            RB: Math.round(t * 2.5),
-            WR: Math.round(t * 2.5),
-            TE: t,
-            K: t,
-            DEF: t
-        }[position] || t;
+    getReplacementRank(position, teams, rosterFormat) {
+        return PlayerStats.replacementRank(position, teams, rosterFormat);
     }
 
     // ======================
@@ -110,12 +113,54 @@ class PickAdvisor {
     // ======================
 
     /**
-     * Scores every available player. Positional rank is taken from the order of
-     * the available pool itself, so it reflects the board as it actually stands
-     * rather than preseason ordering.
+     * Replacement level for each position, measured across every projected
+     * player rather than only those still available.
+     *
+     * It is a property of the league's roster requirements, not of the board:
+     * the twelfth-best quarterback is the replacement whether or not he has been
+     * taken. Deriving it from the shrinking available pool would make it drift
+     * upward all draft, and once the pool is shallower than the replacement rank
+     * it collapses onto the worst player left, understating everyone's value.
+     */
+    computeReplacementBaselines(allPlayers, projections, teams, scoringFormat, rosterFormat) {
+        if (!projections || !allPlayers || !allPlayers.length) return null;
+
+        const pointsByPosition = {};
+
+        allPlayers.forEach(player => {
+            const line = projections[String(player.id)];
+            if (!line) return;
+
+            const pts = (typeof SleeperAPI !== 'undefined' && SleeperAPI.pointsForFormat)
+                ? SleeperAPI.pointsForFormat(line, scoringFormat)
+                : line.pts_half_ppr;
+
+            if (typeof pts !== 'number' || !(pts > 0)) return;
+
+            const pos = player.position;
+            if (!pointsByPosition[pos]) pointsByPosition[pos] = [];
+            pointsByPosition[pos].push(pts);
+        });
+
+        const baselines = {};
+        Object.entries(pointsByPosition).forEach(([pos, points]) => {
+            points.sort((a, b) => b - a);
+            const rank = this.getReplacementRank(pos, teams, rosterFormat);
+            // Too few projected players to locate the line honestly.
+            if (points.length < rank) return;
+            baselines[pos] = points[rank - 1];
+        });
+
+        return Object.keys(baselines).length ? baselines : null;
+    }
+
+    /**
+     * Scores every available player. Uses Sleeper's projection for a player when
+     * one exists, and falls back to the modelled curve when it does not, marking
+     * which was used on each result.
      */
     valuePlayers(availablePlayers, options) {
-        const { teams, scoringFormat } = options;
+        const { teams, scoringFormat, rosterFormat, projections, replacementBaselines } = options;
         const byPosition = {};
 
         availablePlayers.forEach(player => {
@@ -124,26 +169,78 @@ class PickAdvisor {
             byPosition[pos].push(player);
         });
 
+        // A real projection for a specific player beats a curve fitted to the
+        // position in general, so it is used whenever one exists. Coverage is
+        // decided per position: mixing measured and modelled points inside one
+        // position would rank them against different scales.
+        const projectedFor = (player) => {
+            if (!projections) return null;
+            const line = projections[String(player.id)];
+            if (!line) return null;
+            const pts = (typeof SleeperAPI !== 'undefined' && SleeperAPI.pointsForFormat)
+                ? SleeperAPI.pointsForFormat(line, scoringFormat)
+                : (line.pts_half_ppr != null ? line.pts_half_ppr : null);
+            return typeof pts === 'number' && pts > 0 ? pts : null;
+        };
+
         const valued = [];
 
         Object.entries(byPosition).forEach(([pos, players]) => {
-            // Best available first, using whatever deterministic rank exists.
-            players.sort((a, b) => (a.adp || 999) - (b.adp || 999));
+            const projected = new Map();
+            players.forEach(p => {
+                const pts = projectedFor(p);
+                if (pts !== null) projected.set(String(p.id), pts);
+            });
 
-            const multiplier = this.getFormatMultiplier(pos, scoringFormat);
-            const replacementRank = this.getReplacementRank(pos, teams);
-            const replacementPoints = this.projectedPoints(pos, replacementRank) * multiplier;
+            // Only trust projections for a position when most of its players have
+            // one; a thin sample would rank a projected player against a modelled
+            // one and call the difference value.
+            const usingProjections = players.length > 0
+                && projected.size / players.length >= 0.6;
+
+            if (usingProjections) {
+                // Rank by what they are projected to score, not by draft order.
+                players.sort((a, b) =>
+                    (projected.get(String(b.id)) || 0) - (projected.get(String(a.id)) || 0));
+            } else {
+                players.sort((a, b) => (a.adp || 999) - (b.adp || 999));
+            }
+
+            const multiplier = usingProjections ? 1 : this.getFormatMultiplier(pos, scoringFormat);
+            const replacementRank = this.getReplacementRank(pos, teams, rosterFormat);
+
+            // Replacement level is the player actually sitting at that rank when
+            // projections are available, rather than a point on a generic curve.
+            let replacementPoints;
+            if (usingProjections && replacementBaselines && typeof replacementBaselines[pos] === 'number') {
+                // League-wide baseline: the correct definition.
+                replacementPoints = replacementBaselines[pos];
+            } else if (usingProjections) {
+                // No baseline supplied - fall back to the deepest available
+                // player, which understates value but never invents it.
+                const ranked = players
+                    .map(p => projected.get(String(p.id)))
+                    .filter(v => typeof v === 'number');
+                const index = Math.min(ranked.length - 1, Math.max(0, replacementRank - 1));
+                replacementPoints = ranked.length ? ranked[index] : 0;
+            } else {
+                replacementPoints = this.projectedPoints(pos, replacementRank) * multiplier;
+            }
 
             players.forEach((player, index) => {
                 const positionalRank = index + 1;
-                const points = this.projectedPoints(pos, positionalRank) * multiplier;
+                const measured = usingProjections ? projected.get(String(player.id)) : null;
+                const points = (typeof measured === 'number')
+                    ? measured
+                    : this.projectedPoints(pos, positionalRank) * multiplier;
 
                 valued.push({
                     ...player,
                     positionalRank,
                     projectedPoints: Math.round(points),
                     replacementPoints: Math.round(replacementPoints),
-                    vor: Math.round(points - replacementPoints)
+                    vor: Math.round(points - replacementPoints),
+                    projectionSource: (typeof measured === 'number') ? 'sleeper' : 'model'
                 });
             });
         });
@@ -240,12 +337,17 @@ class PickAdvisor {
             roster = { counts: {} },
             teams = 12,
             scoringFormat = 'Half PPR',
-            playerLookup = () => null
+            rosterFormat = 'Standard',
+            playerLookup = () => null,
+            projections = null,
+            replacementBaselines = null
         } = input;
 
         if (!availablePlayers.length) return [];
 
-        const valued = this.valuePlayers(availablePlayers, { teams, scoringFormat });
+        const valued = this.valuePlayers(availablePlayers, {
+            teams, scoringFormat, rosterFormat, projections, replacementBaselines
+        });
         const byId = new Map(valued.map(p => [String(p.id), p]));
         const runs = this.detectRuns(picks, teams, playerLookup);
 
@@ -406,7 +508,34 @@ class PickAdvisor {
             parts.push(`${run.count} of the last ${run.window} picks were ${run.position}s`);
         }
 
+        const falling = this.describeValueGap(player);
+        if (falling) parts.push(falling);
+
         return parts.join('. ') + '.';
+    }
+
+    /**
+     * Projections say how good a player will be; ADP says when the room takes
+     * them. The gap between the two is the bargain, and it is only computable
+     * once real projections are in play - a modelled curve derived from rank
+     * would just be restating the rank.
+     */
+    describeValueGap(player) {
+        if (player.projectionSource !== 'sleeper') return null;
+        if (typeof player.adp !== 'number' || player.adp >= 999) return null;
+
+        // Where the market is taking them, in rounds, against where they rank.
+        const marketRound = Math.ceil(player.adp / 12);
+        const valueRound = Math.ceil(player.positionalRank * 2.2 / 12);
+        const roundsFallen = marketRound - valueRound;
+
+        if (roundsFallen >= 2) {
+            return `projects like a round ${Math.max(1, valueRound)} player but is going around round ${marketRound} - falling value`;
+        }
+        if (roundsFallen <= -2) {
+            return `going around round ${marketRound}, earlier than the projection supports`;
+        }
+        return null;
     }
 
     describePlan(player, gap, boardPick) {

@@ -210,6 +210,7 @@ class EventManager {
             teamName: this.getInputValue('teamName'),
             leagueSize: parseInt(this.getInputValue('leagueSize')) || 12,
             scoringFormat: this.getInputValue('scoringFormat'),
+            rosterFormat: this.getInputValue('rosterFormat') || 'Standard',
             draftPosition: parseInt(this.getInputValue('draftPosition')) || 6,
             sleeperLeagueId: this.getInputValue('sleeperLeagueId'),
             // FIX: Get the correct input field name (sleeperUserName in HTML)

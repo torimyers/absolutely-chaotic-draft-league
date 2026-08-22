@@ -175,6 +175,101 @@ class SleeperAPI {
     }
 
     /**
+     * Season-long projected fantasy points, keyed by player id.
+     *
+     * This is what a draft needs: stats describe games already played, and in
+     * August there are none. Sleeper's season-aggregate form is undocumented and
+     * may not exist for every season, so a failure here is expected rather than
+     * exceptional - the caller falls back rather than breaking.
+     */
+    async getSeasonProjections(season) {
+        try {
+            const data = await this.fetchAPI(`/projections/nfl/regular/${season}`);
+            return this.normalizeProjectionResponse(data);
+        } catch (error) {
+            console.warn(`⚠️ Season projections unavailable for ${season}:`, error.message);
+            return null;
+        }
+    }
+
+    /** Projected points for a single week. */
+    async getWeeklyProjections(season, week) {
+        try {
+            const data = await this.fetchAPI(`/projections/nfl/regular/${season}/${week}`);
+            return this.normalizeProjectionResponse(data);
+        } catch (error) {
+            console.warn(`⚠️ Week ${week} projections unavailable:`, error.message);
+            return null;
+        }
+    }
+
+    /** Actual scored points for a week. Empty before the season starts. */
+    async getWeeklyStats(season, week) {
+        try {
+            const data = await this.fetchAPI(`/stats/nfl/regular/${season}/${week}`);
+            return this.normalizeProjectionResponse(data);
+        } catch (error) {
+            console.warn(`⚠️ Week ${week} stats unavailable:`, error.message);
+            return null;
+        }
+    }
+
+    /** Actual scored points for a whole season. */
+    async getSeasonStats(season) {
+        try {
+            const data = await this.fetchAPI(`/stats/nfl/regular/${season}`);
+            return this.normalizeProjectionResponse(data);
+        } catch (error) {
+            console.warn(`⚠️ Season stats unavailable for ${season}:`, error.message);
+            return null;
+        }
+    }
+
+    /**
+     * These endpoints are undocumented, and have been observed both keyed by
+     * player id and as a flat array of rows carrying player_id. Accept either,
+     * and treat an empty result as absent so callers do not mistake "no games
+     * played yet" for "every player projected zero".
+     */
+    normalizeProjectionResponse(data) {
+        if (!data) return null;
+
+        if (Array.isArray(data)) {
+            if (!data.length) return null;
+            const keyed = {};
+            data.forEach(row => {
+                const id = row && (row.player_id || row.playerId);
+                if (id) keyed[String(id)] = row.stats || row;
+            });
+            return Object.keys(keyed).length ? keyed : null;
+        }
+
+        return Object.keys(data).length ? data : null;
+    }
+
+    /**
+     * Pulls the points field matching the league's scoring format. Sleeper
+     * publishes the three formats as separate fields, which removes the need to
+     * approximate PPR with a positional multiplier.
+     */
+    static pointsForFormat(statLine, scoringFormat) {
+        if (!statLine) return null;
+
+        const format = (scoringFormat || 'Half PPR').toLowerCase();
+        const order = format.includes('half')
+            ? ['pts_half_ppr', 'pts_ppr', 'pts_std']
+            : format.includes('ppr')
+                ? ['pts_ppr', 'pts_half_ppr', 'pts_std']
+                : ['pts_std', 'pts_half_ppr', 'pts_ppr'];
+
+        for (const field of order) {
+            const value = statLine[field];
+            if (typeof value === 'number' && !Number.isNaN(value)) return value;
+        }
+        return null;
+    }
+
+    /**
      * Get state of the NFL season
      */
     async getNFLState() {

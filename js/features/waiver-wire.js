@@ -92,6 +92,15 @@ class WaiverWireManager {
             // Get all player data for analysis
             const allPlayers = await this.sleeperAPI.getAllPlayers();
 
+            // Team production, so the context notes below describe real offenses
+            await PlayerStats.shared().ensureLoaded({
+                week: this.currentWeek,
+                scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+                rosterFormat: this.configManager.config.rosterFormat || 'Standard',
+                teams: this.configManager.config.leagueSize || 12,
+                allPlayers
+            });
+
             // Generate AI recommendations
             const recommendations = await this.generateWaiverRecommendations(
                 trendingAdds, 
@@ -262,18 +271,17 @@ class WaiverWireManager {
         return positionInsights[position] || { adjustment: 0, reasoning: '' };
     }
 
+    /**
+     * Where this player's offense actually ranks in fantasy production.
+     *
+     * This used to pick a blurb at random, so the same waiver target could be
+     * told "high-powered offense" and "struggling offense" on consecutive
+     * refreshes. When there is no ranking to report it now contributes nothing
+     * rather than inventing a narrative.
+     */
     getTeamContextAnalysis(team) {
-        // Placeholder team analysis - would be more sophisticated with real data
-        const teamContexts = [
-            { adjustment: 8, reasoning: 'High-powered offense creates multiple scoring opportunities' },
-            { adjustment: 5, reasoning: 'Solid offensive line provides stable foundation' },
-            { adjustment: -3, reasoning: 'Struggling offense limits overall ceiling' },
-            { adjustment: 3, reasoning: 'Improving offensive coordinator could unlock potential' },
-            { adjustment: 0, reasoning: 'Average offensive situation with standard expectations' }
-        ];
-
-        // Return random context for demo (would be data-driven in production)
-        return teamContexts[Math.floor(Math.random() * teamContexts.length)];
+        const context = PlayerStats.shared().teamContextFor(team);
+        return context || { adjustment: 0, reasoning: '' };
     }
 
     getPPRWaiverInsight(player) {

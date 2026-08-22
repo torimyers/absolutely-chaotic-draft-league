@@ -7,6 +7,7 @@ class LeagueAnalyzer {
     constructor(configManager) {
         this.configManager = configManager;
         this.sleeperAPI = new SleeperAPI();
+        this.playerStats = PlayerStats.shared();
         this.currentWeek = null;
         this.leagueData = null;
         this.userTeam = null;
@@ -69,6 +70,18 @@ class LeagueAnalyzer {
             ]);
 
             const allPlayers = await this.sleeperAPI.getAllPlayers();
+
+            // Player values come from Sleeper's own numbers - actual points once
+            // the season is under way, projections before it. Without this the
+            // positional ratings below have nothing real to rank players by.
+            await this.playerStats.ensureLoaded({
+                season: league?.season,
+                week: this.currentWeek,
+                scoringFormat: this.configManager.config.scoringFormat || 'Half PPR',
+                rosterFormat: this.configManager.config.rosterFormat || 'Standard',
+                teams: league?.total_rosters || this.configManager.config.leagueSize || 12,
+                allPlayers
+            });
 
             return {
                 league,
@@ -145,7 +158,7 @@ class LeagueAnalyzer {
             competitiveAnalysis: await this.analyzeCompetition(leagueData, userTeam),
             strengthsWeaknesses: await this.identifyStrengthsWeaknesses(leagueData, userTeam),
             tradeTargets: await this.identifyTradeTargets(leagueData, userTeam),
-            playoffProjection: this.calculatePlayoffOdds(leagueData, userTeam),
+            playoffProjection: await this.calculatePlayoffOdds(leagueData, userTeam),
             recommendations: [],
             overallScore: 0
         };
@@ -215,55 +228,66 @@ class LeagueAnalyzer {
                     strength: 'Very Weak',
                     count: 0,
                     topPlayer: null,
-                    depth: 'None'
+                    depth: 'None',
+                    hasData: true
                 };
                 continue;
             }
 
-            // Simulate player values for this position
+            // Only players Sleeper has numbers for can be rated. A position where
+            // none of them do is reported as unrated rather than scored on
+            // invented values.
             const playerValues = positionPlayers.map(player => ({
                 player,
                 value: this.calculatePlayerValue(player, isPPR)
-            })).sort((a, b) => b.value - a.value);
+            })).filter(entry => entry.value !== null)
+              .sort((a, b) => b.value - a.value);
+
+            if (playerValues.length === 0) {
+                positionalStrength[position] = {
+                    rating: null,
+                    strength: 'Not rated',
+                    count: positionPlayers.length,
+                    topPlayer: `${positionPlayers[0].first_name} ${positionPlayers[0].last_name}`,
+                    depth: this.getDepthDescription(positionPlayers.length),
+                    hasData: false,
+                    note: `No ${this.playerStats.describeSource()} for these players yet`
+                };
+                continue;
+            }
 
             const topValue = playerValues[0]?.value || 0;
             const averageValue = playerValues.reduce((sum, p) => sum + p.value, 0) / playerValues.length;
             
+            // The label is a coarse bucket, but the rating that feeds the power
+            // rankings stays continuous. Snapping it to 90/75/65/50 threw away
+            // the difference between the best team at a position and the fourth
+            // best, so half the league used to tie.
             let strength = 'Average';
-            let rating = 50;
-            
-            if (topValue >= 85) {
-                strength = 'Elite';
-                rating = 90;
-            } else if (topValue >= 75) {
-                strength = 'Strong';
-                rating = 75;
-            } else if (topValue >= 60) {
-                strength = 'Good';
-                rating = 65;
-            } else if (topValue >= 45) {
-                strength = 'Average';
-                rating = 50;
-            } else if (topValue >= 30) {
-                strength = 'Weak';
-                rating = 35;
-            } else {
-                strength = 'Very Weak';
-                rating = 20;
-            }
+            if (topValue >= 85) strength = 'Elite';
+            else if (topValue >= 75) strength = 'Strong';
+            else if (topValue >= 60) strength = 'Good';
+            else if (topValue >= 45) strength = 'Average';
+            else if (topValue >= 30) strength = 'Weak';
+            else strength = 'Very Weak';
 
-            // Adjust for depth
+            // Your best player at a position carries most of the weight; what is
+            // behind him matters, but less.
+            let rating = topValue * 0.65 + averageValue * 0.35;
+
             if (playerValues.length >= 3 && averageValue >= 50) {
-                rating += 10;
+                rating += 8;
                 strength += ' (Good Depth)';
             } else if (playerValues.length <= 1) {
-                rating -= 15;
+                rating -= 12;
                 strength += ' (No Depth)';
             }
 
             positionalStrength[position] = {
-                rating: Math.min(100, Math.max(0, rating)),
+                rating: Math.round(Math.min(100, Math.max(0, rating))),
                 strength,
+                hasData: true,
+                rated: playerValues.length,
                 count: positionPlayers.length,
                 topPlayer: playerValues[0]?.player ? 
                     `${playerValues[0].player.first_name} ${playerValues[0].player.last_name}` : null,
@@ -275,37 +299,33 @@ class LeagueAnalyzer {
         return positionalStrength;
     }
 
+    /**
+     * A player's value on a 0-100 positional scale.
+     *
+     * This used to be a position constant plus a random +/-15, which meant the
+     * same roster rated differently on every run and the rankings it fed were
+     * decoration. It is now Sleeper's own production for that player measured
+     * against replacement level at his position, with an availability penalty
+     * for a reported injury.
+     */
     calculatePlayerValue(player, isPPR) {
-        // Simplified player value calculation
-        let baseValue = 50;
-        
-        // Position-based adjustments
-        const positionValues = {
-            'QB': 60,
-            'RB': isPPR ? 65 : 70,
-            'WR': isPPR ? 70 : 60,
-            'TE': isPPR ? 55 : 45,
-            'K': 40,
-            'DEF': 45
-        };
-        
-        baseValue = positionValues[player.position] || 50;
-        
-        // Experience adjustment
-        if (player.years_exp <= 2) baseValue += 5; // Young upside
-        else if (player.years_exp >= 10) baseValue -= 10; // Age concern
-        
-        // Injury adjustment
-        if (player.injury_status) {
-            if (player.injury_status.toLowerCase() === 'out') baseValue -= 30;
-            else if (player.injury_status.toLowerCase() === 'doubtful') baseValue -= 20;
-            else if (player.injury_status.toLowerCase() === 'questionable') baseValue -= 10;
+        const value = this.playerStats.valueFor(player);
+        if (value === null) return null;
+
+        return Math.max(0, Math.min(100, value - this.getInjuryPenalty(player)));
+    }
+
+    /** A player who will not play cannot score, whatever his numbers say. */
+    getInjuryPenalty(player) {
+        switch ((player.injury_status || '').toLowerCase()) {
+            case 'out':
+            case 'ir':
+            case 'pup':
+            case 'sus': return 30;
+            case 'doubtful': return 20;
+            case 'questionable': return 10;
+            default: return 0;
         }
-        
-        // Add some randomization for variety (would use real stats in production)
-        baseValue += (Math.random() - 0.5) * 30;
-        
-        return Math.max(0, Math.min(100, baseValue));
     }
 
     getDepthDescription(count) {
@@ -366,9 +386,14 @@ class LeagueAnalyzer {
     }
 
     calculateRosterRating(teamAnalysis) {
-        const posRatings = Object.values(teamAnalysis.positionalStrength);
+        // Unrated positions are left out of the average rather than counted as
+        // zero, which would punish a team for a gap in Sleeper's data.
+        const posRatings = Object.values(teamAnalysis.positionalStrength)
+            .filter(pos => typeof pos.rating === 'number');
+        if (posRatings.length === 0) return null;
+
         const avgPositionalRating = posRatings.reduce((sum, pos) => sum + pos.rating, 0) / posRatings.length;
-        
+
         let rating = avgPositionalRating;
         
         // Scoring performance adjustment
@@ -388,6 +413,12 @@ class LeagueAnalyzer {
     }
 
     async generateLeagueRankings(leagueData) {
+        // Four different sections ask for these during one analysis; rating every
+        // roster in the league four times over is pure waste.
+        if (this.rankingsCacheKey === leagueData && this.rankingsCache) {
+            return this.rankingsCache;
+        }
+
         const { rosters, users } = leagueData;
         
         const teamRankings = await Promise.all(rosters.map(async (roster) => {
@@ -414,9 +445,15 @@ class LeagueAnalyzer {
                 return bWinPct - aWinPct;
             }),
             byPointsFor: [...teamRankings].sort((a, b) => b.pointsFor - a.pointsFor),
-            byRosterRating: [...teamRankings].sort((a, b) => b.rosterRating - a.rosterRating),
+            // An unrated roster sorts last rather than poisoning the comparison with NaN.
+            byRosterRating: [...teamRankings].sort((a, b) =>
+                (typeof b.rosterRating === 'number' ? b.rosterRating : -1) -
+                (typeof a.rosterRating === 'number' ? a.rosterRating : -1)),
             byAverageScore: [...teamRankings].sort((a, b) => parseFloat(b.averageScore) - parseFloat(a.averageScore))
         };
+
+        this.rankingsCacheKey = leagueData;
+        this.rankingsCache = rankings;
 
         return rankings;
     }
@@ -475,7 +512,11 @@ class LeagueAnalyzer {
     }
 
     assessCompetitiveLevel(rankings) {
-        const scores = rankings.byRosterRating.map(team => team.rosterRating);
+        const scores = rankings.byRosterRating
+            .map(team => team.rosterRating)
+            .filter(score => typeof score === 'number');
+        if (scores.length < 2) return 'Unknown';
+
         const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
         const variance = scores.reduce((sum, score) => sum + Math.pow(score - avgScore, 2), 0) / scores.length;
         const standardDeviation = Math.sqrt(variance);
@@ -496,7 +537,9 @@ class LeagueAnalyzer {
         
         // Analyze each position relative to league
         Object.entries(userAnalysis.positionalStrength).forEach(([position, data]) => {
+            if (typeof data.rating !== 'number') return; // unrated - nothing to compare
             const leagueAvg = this.calculateLeaguePositionalAverage(rankings, position);
+            if (leagueAvg === null) return;
             
             if (data.rating >= leagueAvg + 15) {
                 strengths.push({
@@ -554,8 +597,9 @@ class LeagueAnalyzer {
 
     calculateLeaguePositionalAverage(rankings, position) {
         const allRatings = rankings.byRosterRating
-            .map(team => team.positionalStrength[position]?.rating || 0)
-            .filter(rating => rating > 0);
+            .map(team => team.positionalStrength[position]?.rating)
+            .filter(rating => typeof rating === 'number' && rating > 0);
+        if (allRatings.length === 0) return null;
         
         return allRatings.length > 0 ? 
             allRatings.reduce((sum, rating) => sum + rating, 0) / allRatings.length : 50;
@@ -565,9 +609,13 @@ class LeagueAnalyzer {
         const strengthCount = strengths.length;
         const weaknessCount = weaknesses.length;
         const rosterRating = userAnalysis.rosterRating;
-        
+
         let assessment = '';
-        
+
+        if (typeof rosterRating !== 'number') {
+            return 'Not enough player data yet to rate this roster - check back once stats or projections are published.';
+        }
+
         if (rosterRating >= 80) {
             assessment = 'Championship Contender - Elite roster with multiple strengths';
         } else if (rosterRating >= 70) {
@@ -646,8 +694,12 @@ class LeagueAnalyzer {
         return tradeTargets.slice(0, 5);
     }
 
-    calculatePlayoffOdds(leagueData, userTeam) {
-        const rankings = this.generateLeagueRankings(leagueData);
+    /**
+     * generateLeagueRankings is async; this was calling it without awaiting, so
+     * `rankings` was a pending Promise and every read off it was undefined.
+     */
+    async calculatePlayoffOdds(leagueData, userTeam) {
+        const rankings = await this.generateLeagueRankings(leagueData);
         const userRosterId = userTeam.roster.roster_id;
         const leagueSize = leagueData.rosters.length;
         const playoffSpots = Math.ceil(leagueSize / 2);
@@ -747,6 +799,7 @@ class LeagueAnalyzer {
 
     calculateOverallScore(analysis) {
         let score = analysis.userTeam.rosterRating;
+        if (typeof score !== 'number') return null;
         
         // Adjust for competitive position
         const avgRanking = (

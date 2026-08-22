@@ -12,6 +12,10 @@ class ConfigManager {
             teamName: "",
             leagueSize: 12,
             scoringFormat: "Half PPR",
+            // How the lineup is built, which is independent of how points are
+            // scored. Super Flex leagues start a second quarterback, which moves
+            // QB replacement level - it says nothing about receptions.
+            rosterFormat: "Standard",
             draftPosition: 6,
             
             // Season Stats
@@ -69,6 +73,52 @@ class ConfigManager {
      * and the tracker kept polling the old mock draft, ignoring the league
      * entirely. This is called on load and on save so stale state cannot survive.
      */
+    /**
+     * Super Flex used to be an option in the Scoring Format dropdown, which put a
+     * roster rule in a points-per-reception setting. A profile saved that way has
+     * no usable scoring format at all, so move it to rosterFormat and fall back to
+     * the default scoring. Runs on load and on save, so an old profile repairs
+     * itself the first time it is opened.
+     */
+    normalizeFormats(config) {
+        const scoring = String(config.scoringFormat || '').trim();
+        const validScoring = ['Standard', 'Half PPR', 'PPR'];
+
+        if (/super\s*flex/i.test(scoring) || /^2\s*qb$/i.test(scoring)) {
+            config.rosterFormat = /^2\s*qb$/i.test(scoring) ? '2QB' : 'Super Flex';
+            // The old value carried no scoring information to preserve.
+            config.scoringFormat = 'Half PPR';
+        } else if (!validScoring.includes(scoring)) {
+            config.scoringFormat = 'Half PPR';
+        }
+
+        const validRoster = ['Standard', 'Super Flex', '2QB'];
+        if (!validRoster.includes(config.rosterFormat)) {
+            config.rosterFormat = 'Standard';
+        }
+
+        return config;
+    }
+
+    /**
+     * Reads the starting lineup Sleeper publishes for the league. SUPER_FLEX is
+     * an explicit slot; two required QB slots is the 2QB variant. Both let a
+     * second quarterback start, which is what changes QB scarcity.
+     */
+    static detectRosterFormat(rosterPositions) {
+        if (!Array.isArray(rosterPositions)) return 'Standard';
+
+        const slots = rosterPositions.map(slot => String(slot).toUpperCase());
+        if (slots.includes('SUPER_FLEX')) return 'Super Flex';
+        if (slots.filter(slot => slot === 'QB').length >= 2) return '2QB';
+        return 'Standard';
+    }
+
+    /** True when the league starts more than one quarterback. */
+    startsTwoQuarterbacks(config = this.config) {
+        return config.rosterFormat === 'Super Flex' || config.rosterFormat === '2QB';
+    }
+
     normalizeSleeperTarget(config) {
         const leagueId = config.sleeperLeagueId ? String(config.sleeperLeagueId).trim() : '';
         const draftId = config.sleeperDraftId ? String(config.sleeperDraftId).trim() : '';
@@ -103,6 +153,8 @@ class ConfigManager {
                 this.config = { ...this.config, ...JSON.parse(saved) };
                 // Repairs profiles saved before the mock-draft flags were cleared properly.
                 this.normalizeSleeperTarget(this.config);
+                // ...and profiles that stored Super Flex as a scoring format.
+                this.normalizeFormats(this.config);
             } catch (e) {
                 console.warn('Could not load saved configuration, using defaults');
             }
@@ -137,6 +189,7 @@ class ConfigManager {
             FANTASY_TEAM_NAME: 'teamName',
             FANTASY_LEAGUE_SIZE: 'leagueSize',
             FANTASY_SCORING_FORMAT: 'scoringFormat',
+            FANTASY_ROSTER_FORMAT: 'rosterFormat',
             FANTASY_TEAM_RECORD: 'teamRecord',
             FANTASY_TOTAL_POINTS: 'totalPoints',
             FANTASY_LEAGUE_RANKING: 'leagueRanking',
@@ -268,7 +321,7 @@ class ConfigManager {
             this.config.leagueSize = leagueData.total_rosters || leagueData.settings?.teams || 12;
             this.config.draftCompleted = leagueData.status === 'in_season' || leagueData.status === 'complete';
             
-            // Determine scoring format
+            // Determine scoring format - purely about points per reception
             const scoringSettings = leagueData.scoring_settings || leagueData.settings;
             if (scoringSettings) {
                 if (scoringSettings.rec === 1 || scoringSettings.ppr === 1) {
@@ -279,6 +332,9 @@ class ConfigManager {
                     this.config.scoringFormat = 'Standard';
                 }
             }
+
+            // Determine roster format from the starting lineup Sleeper publishes
+            this.config.rosterFormat = ConfigManager.detectRosterFormat(leagueData.roster_positions);
             
             // For mock drafts, we might not have rosters/users data
             if (isMockDraft) {
@@ -290,7 +346,8 @@ class ConfigManager {
             this.updateFormFields({
                 leagueName: this.config.leagueName,
                 leagueSize: this.config.leagueSize,
-                scoringFormat: this.config.scoringFormat
+                scoringFormat: this.config.scoringFormat,
+                rosterFormat: this.config.rosterFormat
             });
             
             // Clear any previous team data
@@ -766,6 +823,7 @@ class ConfigManager {
         };
 
         this.normalizeSleeperTarget(this.config);
+        this.normalizeFormats(this.config);
 
         // Save to localStorage with error handling
         try {
@@ -977,6 +1035,7 @@ class ConfigManager {
             this.safeSetInputValue('teamName', this.config.teamName);
             this.safeSetInputValue('leagueSize', this.config.leagueSize);
             this.safeSetInputValue('scoringFormat', this.config.scoringFormat);
+            this.safeSetInputValue('rosterFormat', this.config.rosterFormat);
             this.safeSetInputValue('draftPosition', this.config.draftPosition);
             this.safeSetInputValue('sleeperLeagueId', this.config.sleeperLeagueId);
             // FIX: Use the correct input field ID from HTML (sleeperUserName not sleeperUsername)

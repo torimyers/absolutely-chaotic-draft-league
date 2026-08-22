@@ -1144,7 +1144,11 @@ class LineupOptimizer {
                         </div>
                         <div class="stat-card">
                             <span class="stat-label">Roster Rating</span>
-                            <span class="stat-value" style="color: ${getScoreColor(analysis.userTeam.rosterRating)}">${analysis.userTeam.rosterRating}/100</span>
+                            ${typeof analysis.userTeam.rosterRating === 'number' ? `
+                                <span class="stat-value" style="color: ${getScoreColor(analysis.userTeam.rosterRating)}">${analysis.userTeam.rosterRating}/100</span>
+                            ` : `
+                                <span class="stat-value" title="No published stats or projections for these players yet">Not rated</span>
+                            `}
                         </div>
                     </div>
                 </div>
