@@ -66,10 +66,12 @@ Analysis" button, and is banner-labelled on the page.
 
 ## 🛠️ Tech Stack
 
+- **Tests**: Playwright driving the real app under `wrangler pages dev` (`npm test`)
 - **Frontend**: Vanilla JavaScript with modern ES6+
 - **Styling**: Custom CSS with CSS Grid and Flexbox
 - **APIs**: Sleeper (league, rosters, players), Open-Meteo (weather), ESPN (NFL schedule) - all keyless, no signup required
 - **Hosting**: Cloudflare Pages
+- **Sync backend** (optional): Cloudflare Pages Functions + D1, used only for cross-device league settings
 - **PWA**: Installable with offline support
 
 ## 📦 Quick Start
@@ -85,7 +87,8 @@ Visit [https://texasperfect.win](https://texasperfect.win) to use the hosted ver
    cd absolutely-chaotic-draft-league
    ```
 
-2. **No build process needed!** This is a static site. Simply:
+2. **No build process needed!** This is a static site - `npm install` is only
+   needed to run the tests. Simply:
    - Open `index.html` in a browser, or
    - Use a local server: `python -m http.server 8000`
    - Visit `http://localhost:8000`
@@ -151,10 +154,83 @@ The app is fully installable on mobile devices:
 
 ## 🔒 Privacy & Security
 
-- **No server-side storage** - All data stays in your browser
+- **Local by default** - With sync switched off (the default) nothing leaves your
+  browser, and the app is a purely static site
+- **Optional cross-device sync** - If you turn it on, your league settings only
+  are copied to a small database on the site's own Cloudflare deployment. See
+  [Cross-device sync](#-cross-device-sync) for exactly what is stored and the
+  security trade-off it makes
+- **Your draft plan is never uploaded** - Sync carries league settings only. The
+  draft plan and learning progress stay in the browser; use Save Backup to move
+  those
 - **Secure API calls** - Direct HTTPS to Sleeper, Open-Meteo and ESPN. No credentials or personal data are sent to any of them; requests carry only a league ID, a week number or a pair of coordinates
 - **No tracking** - No analytics or user tracking
 - **Open source** - Audit the code yourself
+
+## 🔄 Cross-device sync
+
+Setting your league up on a laptop and then again on a phone is a chore, so the
+configuration panel can link your setup to your Sleeper account and carry it
+between devices.
+
+**How to use it:** open ⚙️ → *Sync Across Devices* → type your Sleeper username →
+*Turn On Sync*. On your other device, do the same and it pulls the setup down.
+
+**Read this before turning it on.** This is deliberately not a password-protected
+account:
+
+- Anyone who knows your Sleeper username can read or overwrite the synced setup.
+- It is defensible only because of *what* is stored: league ID, team name, league
+  size, scoring and roster format, draft slot, theme - all of which your league
+  mates can already see on Sleeper.
+- Your draft plan and learning progress are **never** uploaded.
+- Profiles are keyed on Sleeper's stable `user_id`, resolved server-side, so a
+  renamed or recycled username cannot hand your profile to someone else.
+- The server stores only a fixed list of known settings, each range-checked, so
+  the endpoint cannot be used as a general-purpose data store.
+
+**With sync off, none of this applies** - the app behaves exactly as it always
+has, everything stays in `localStorage`, and the sync endpoints are never called.
+
+Self-hosters get the local-only behaviour for free: without a D1 binding the sync
+endpoints answer `503` and the app carries on using local storage. See
+[DEPLOYMENT.md](DEPLOYMENT.md) to enable it.
+
+## 🧪 Tests
+
+End-to-end tests drive the real app in a headless browser, served by
+`wrangler pages dev` so the Pages Functions, the D1 binding and the routing
+rules all take part.
+
+```bash
+npm install
+npx playwright install chromium   # one-off
+npm test
+```
+
+Nothing reaches the network. Sleeper, ESPN and Open-Meteo are intercepted in the
+browser, and the Functions' own Sleeper calls go to a stub over the test-only
+`SLEEPER_API_BASE` binding, so a run behaves the same on a laptop, in CI and
+offline. D1 state goes to a throwaway directory and is deleted afterwards.
+
+```bash
+npm test -- sync          # only suites matching "sync"
+npm test -- --headed      # watch it happen in a real window
+npm test -- --verbose     # include wrangler's own output
+```
+
+If Chromium is already on the machine, `CHROMIUM_EXECUTABLE=/path/to/chrome`
+skips the Playwright download.
+
+| Suite | What it pins down |
+|---|---|
+| `persistence` | The league setup survives a refresh, and a returning user is never re-prompted |
+| `profile-api` | The sync endpoints: account verification, the field whitelist, write ordering, malformed input, routing |
+| `startup-resilience` | One feature failing to start cannot take the event handling or the other features with it |
+| `api-shapes` | A malformed Sleeper response degrades a feature instead of breaking it |
+
+Each suite is written against a bug that actually shipped, and each one fails if
+you revert the fix for it.
 
 ## 🤝 Contributing
 
@@ -162,9 +238,10 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+3. Run `npm test` and make sure it is green
+4. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+5. Push to the branch (`git push origin feature/AmazingFeature`)
+6. Open a Pull Request
 
 ## 📄 License
 
@@ -192,6 +269,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Trade analyzer with fair value calculations
 - [x] Waiver wire priority predictions
 - [x] Playoff and championship odds
+- [x] Cross-device sync of league settings
 - [ ] Dynasty league support
 - [ ] Keeper league tools
 - [ ] Mobile app (React Native)

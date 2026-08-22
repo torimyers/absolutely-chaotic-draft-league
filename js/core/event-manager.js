@@ -151,6 +151,16 @@ class EventManager {
                 case 'run-streak-demo':
                     this.runStreakDemo();
                     break;
+                case 'enable-profile-sync':
+                    this.enableProfileSync();
+                    break;
+                case 'disable-profile-sync':
+                    this.disableProfileSync();
+                    break;
+                case 'sync-profile-now':
+                    this.syncProfileNow();
+                    break;
+
                 case 'export-app-data':
                     this.configManager.exportAppData();
                     break;
@@ -184,6 +194,33 @@ class EventManager {
     // CONFIGURATION ACTIONS
     // ======================
 
+    /** Reads whichever sync instance is available, wherever it was attached. */
+    getProfileSync() {
+        return (this.configManager && this.configManager.profileSync) || window.profileSync || null;
+    }
+
+    enableProfileSync() {
+        const sync = this.getProfileSync();
+        if (!sync) {
+            this.showNotification('❌ Sync is not available', 'error');
+            return;
+        }
+        // Fall back to the auto-detection username, so a user who has already
+        // typed it once does not have to type it again.
+        const username = this.getInputValue('syncUsername') || this.getInputValue('sleeperUserName');
+        sync.enable(username);
+    }
+
+    disableProfileSync() {
+        const sync = this.getProfileSync();
+        if (sync) sync.disable();
+    }
+
+    syncProfileNow() {
+        const sync = this.getProfileSync();
+        if (sync) sync.syncNow();
+    }
+
     showConfiguration() {
         if (!this.configManager) {
             this.showNotification('❌ Configuration system not available', 'error');
@@ -191,6 +228,12 @@ class EventManager {
         }
         
         this.configManager.populateConfigForm();
+
+        // Keep the sync controls honest about the current state each time the
+        // panel is opened, not just at startup.
+        const sync = this.getProfileSync();
+        if (sync) sync.render();
+
         const configPanel = document.getElementById('configPanel');
         if (configPanel) {
             configPanel.classList.remove('hidden');

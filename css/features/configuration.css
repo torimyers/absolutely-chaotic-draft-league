@@ -671,3 +671,39 @@
         border-left-width: 6px;
     }
 }
+/* ========================================
+   CROSS-DEVICE SYNC
+   ======================================== */
+
+/* The sync section trades security for convenience, so the caveat has to be
+   readable rather than fine print tucked under the button. */
+.sync-warning {
+    margin: var(--space-md) 0;
+    padding: var(--space-md);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--warning-color, #f39c12);
+    background: rgba(243, 156, 18, 0.1);
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    line-height: 1.5;
+}
+
+.sync-warning strong {
+    color: var(--warning-color, #f39c12);
+}
+
+.sync-status {
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--border-radius);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    text-align: center;
+}
+
+.sync-status-on {
+    background: rgba(46, 204, 113, 0.1);
+    border: 1px solid var(--success-color);
+    color: var(--success-color);
+}

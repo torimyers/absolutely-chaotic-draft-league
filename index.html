@@ -39,7 +39,10 @@
 </head>
 <body data-theme="teal">
     <!-- Configuration Panel -->
-    <div class="config-panel" id="configPanel">
+    <!-- Starts hidden: this is a full-screen modal, so a returning user whose
+         league is already saved must never see it. ConfigManager reveals it
+         only when there is nothing configured yet. -->
+    <div class="config-panel hidden" id="configPanel">
         <div class="config-card">
             <h2 class="config-title">🏈 Welcome to Fantasy Football Command Center</h2>
             
@@ -137,6 +140,40 @@
                         </select>
                     </div>
                 </div>
+            </div>
+
+            <div class="config-section">
+                <h3>🔄 Sync Across Devices</h3>
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <p style="color: var(--text-secondary); font-size: 0.9em;">
+                        Link your Sleeper username and this setup follows you to your phone,
+                        so you only fill it in once.
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="syncUsername">Sleeper Username</label>
+                    <input type="text" class="form-input" id="syncUsername" placeholder="Your Sleeper username" autocomplete="username">
+                    <div class="example-text">The same username you sign in to Sleeper with.</div>
+                </div>
+                <p class="sync-warning">
+                    <strong>This is not a password-protected account.</strong> Anyone who knows
+                    your Sleeper username can read or overwrite this synced setup. Only league
+                    settings are stored &mdash; league ID, team name, scoring format &mdash; all of
+                    which league mates can already see on Sleeper. Your draft plan and learning
+                    progress are never uploaded; use Save Backup below for those.
+                </p>
+                <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-md);">
+                    <button type="button" class="btn btn-secondary" data-action="enable-profile-sync" id="syncEnableBtn">
+                        <span>🔗</span> Turn On Sync
+                    </button>
+                    <button type="button" class="btn btn-outline hidden" data-action="sync-profile-now" id="syncNowBtn">
+                        <span>🔄</span> Sync Now
+                    </button>
+                    <button type="button" class="btn btn-outline hidden" data-action="disable-profile-sync" id="syncDisableBtn">
+                        <span>✖️</span> Turn Off Sync
+                    </button>
+                </div>
+                <div class="sync-status" id="syncStatus">Sync is off. Your league is saved in this browser only.</div>
             </div>
 
             <div class="config-section">
@@ -660,6 +697,7 @@
     <!-- Core JavaScript -->
     <script src="js/utils/player-stats.js"></script>
     <script src="js/core/config-manager.js"></script>
+    <script src="js/core/profile-sync.js"></script>
     <script src="js/core/navigation-manager.js"></script>
     <script src="js/core/learning-manager.js"></script>
     <script src="js/core/event-manager.js"></script>

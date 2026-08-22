@@ -1,0 +1,22 @@
+# Wrangler configuration used only by `npm test`, and only by `wrangler d1
+# execute` - which needs a named database in a config file to resolve.
+#
+# `wrangler pages dev` refuses a custom --config path, so the runner passes it
+# the same database ID on the command line instead. Both are keyed by that ID,
+# so they read and write the same throwaway local SQLite file.
+#
+# This binding lives here rather than in the repository's wrangler.toml because
+# a deployment that reads a binding for a database missing from the account
+# fails to build. Shipping one would make the repo undeployable for anyone who
+# has not set sync up, which is the opposite of sync being optional.
+#
+# The database_id is a local-only label: `wrangler --local` never contacts
+# Cloudflare.
+
+name = "absolutely-chaotic-draft-league-tests"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fantasy-profiles-test"
+database_id = "fantasy-profiles-test-local"

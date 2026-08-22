@@ -121,7 +121,12 @@ class SleeperAPI {
     }
 
     /**
-     * Get all NFL players (large dataset, cached for longer)
+     * Get all NFL players (large dataset, cached for longer).
+     *
+     * Always resolves to an object keyed by player ID - the shape every caller
+     * assumes when it does `allPlayers[id]` or `Object.values(allPlayers)`.
+     * Same reasoning as getTrendingPlayers: a malformed success used to reach
+     * those call sites and throw. A failed request still rejects.
      */
     async getAllPlayers() {
         const cacheKey = '/players/nfl';
@@ -135,7 +140,16 @@ class SleeperAPI {
             }
         }
         
-        return this.fetchAPI('/players/nfl', false);
+        const players = await this.fetchAPI('/players/nfl', false);
+
+        // An array would survive Object.values() but break every lookup by ID,
+        // so it is rejected here rather than half-working downstream.
+        if (!players || typeof players !== 'object' || Array.isArray(players)) {
+            console.warn('⚠️ Sleeper returned no usable player database:', players);
+            return {};
+        }
+
+        return players;
     }
 
     /**
@@ -154,10 +168,28 @@ class SleeperAPI {
     }
 
     /**
-     * Get trending players (adds/drops)
+     * Get trending players (adds/drops).
+     *
+     * Always resolves to an array of row objects. Every caller iterates the
+     * result - `.map`, `.forEach`, `.find`, `for...of` - and Sleeper normally
+     * answers with an array, but an outage or an error page can put an object
+     * or null there instead. Iterating that threw straight out of a manager's
+     * initialize(), and a guard like `(rows || []).forEach` does not help: the
+     * bad value is a truthy object, not a nullish one.
+     *
+     * A failed request still rejects, so the callers that surface an error
+     * state keep doing so. Only a malformed success is flattened, and rows that
+     * are not objects are dropped so `row.player_id` is always safe to read.
      */
     async getTrendingPlayers(type = 'add', lookback = 24, limit = 25) {
-        return this.fetchAPI(`/players/nfl/trending/${type}?lookback_hours=${lookback}&limit=${limit}`);
+        const rows = await this.fetchAPI(`/players/nfl/trending/${type}?lookback_hours=${lookback}&limit=${limit}`);
+
+        if (!Array.isArray(rows)) {
+            console.warn(`⚠️ Sleeper returned no usable trending "${type}" data:`, rows);
+            return [];
+        }
+
+        return rows.filter(row => row && typeof row === 'object');
     }
 
     /**
