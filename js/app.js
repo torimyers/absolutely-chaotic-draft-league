@@ -3,112 +3,150 @@
 // Application managers
 let configManager, navigationManager, learningManager, draftTracker, eventManager, teamManager, waiverWireManager, performanceAnalytics, leagueAnalyzer, tradeAnalyzer, playoffSimulator, weatherAnalyzer, predictiveAnalytics, profileSync;
 
+/** Human-readable names of anything that failed to start, for the warning. */
+const failedManagers = [];
+
+/**
+ * Starts one manager in isolation and publishes it on `window`.
+ *
+ * Every manager used to be built inside a single try block, so the first one to
+ * throw skipped all the rest - and EventManager, built last and owning every
+ * click handler on the page, was the usual casualty. One unexpected API shape
+ * could leave the entire UI inert while the console claimed only that "some
+ * features may not work correctly". Each manager now fails on its own.
+ *
+ * @param {string} name  Global to publish under, and the label used in logs.
+ * @param {string} label What to call this in a message to the user.
+ * @param {() => any} start Builds the manager. May be async.
+ * @returns {Promise<any|null>} The manager, or null if it could not start.
+ */
+async function startManager(name, label, start) {
+    try {
+        const manager = await start();
+        window[name] = manager;
+        console.log(`✅ ${name} ready`);
+        return manager;
+    } catch (error) {
+        console.error(`❌ ${name} failed to start:`, error);
+        failedManagers.push(label);
+        return null;
+    }
+}
+
 // Initialize app components
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('🏈 Fantasy Football Command Center - Event-Driven Architecture');
-    
-    // Initialize core systems first
+
+    // ConfigManager is the one hard dependency: every other manager is
+    // constructed with it, so there is nothing to degrade to if it fails.
     try {
         configManager = new ConfigManager();
-        navigationManager = new NavigationManager();
-        learningManager = new LearningManager();
+        window.configManager = configManager;
+    } catch (error) {
+        console.error('❌ Critical error initializing configuration:', error);
+        showFallbackNotification('❌ App initialization failed. Please refresh the page.', 'error');
+        return;
+    }
 
-        // Sync is optional and must never block startup: the local setup is the
-        // source of truth, so the pull happens in the background and a failure
-        // leaves the app exactly as it would have been without it.
-        profileSync = new ProfileSync(configManager);
+    navigationManager = await startManager('navigationManager', 'Navigation', () => new NavigationManager());
+    learningManager = await startManager('learningManager', 'Fantasy Academy', () => new LearningManager());
+
+    // Sync is optional and must never block startup: the local setup is the
+    // source of truth, so the pull happens in the background and a failure
+    // leaves the app exactly as it would have been without it.
+    profileSync = await startManager('profileSync', 'Cross-device sync', () => new ProfileSync(configManager));
+    if (profileSync) {
         configManager.profileSync = profileSync;
-        window.profileSync = profileSync;
         profileSync.pullOnStartup().catch(error => {
             console.warn('Profile sync unavailable:', error);
         });
-
-        console.log('✅ Core systems initialized');
-        
-        // Initialize features after core is ready
-        setTimeout(async () => {
-            try {
-                draftTracker = new DraftTracker(configManager);
-                console.log('✅ Draft tracker initialized');
-                
-                // Initialize team manager
-                teamManager = new TeamManager(configManager);
-                console.log('✅ Team manager initialized');
-                
-                // Initialize waiver wire manager
-                waiverWireManager = new WaiverWireManager(configManager);
-                await waiverWireManager.initialize();
-                console.log('✅ Waiver wire manager initialized');
-                
-                // Initialize performance analytics
-                performanceAnalytics = new PerformanceAnalytics(configManager);
-                await performanceAnalytics.initialize();
-                console.log('✅ Performance analytics initialized');
-                
-                // Initialize league analyzer
-                leagueAnalyzer = new LeagueAnalyzer(configManager);
-                await leagueAnalyzer.initialize();
-                console.log('✅ League analyzer initialized');
-                
-                // Initialize trade analyzer
-                tradeAnalyzer = new TradeAnalyzer(configManager);
-                await tradeAnalyzer.initialize();
-                console.log('✅ Trade analyzer initialized');
-                
-                // Initialize playoff simulator
-                playoffSimulator = new PlayoffSimulator(configManager);
-                await playoffSimulator.initialize();
-                console.log('✅ Playoff simulator initialized');
-
-                // Initialize weather analyzer
-                weatherAnalyzer = new WeatherAnalyzer(configManager);
-                await weatherAnalyzer.initialize();
-                console.log('✅ Weather analyzer initialized');
-
-                // Initialize predictive analytics
-                predictiveAnalytics = new PredictiveAnalytics(configManager);
-                await predictiveAnalytics.initialize();
-                console.log('✅ Predictive analytics initialized');
-                
-                // Initialize EventManager last - it needs all other managers
-                eventManager = new EventManager(
-                    configManager, 
-                    navigationManager, 
-                    learningManager, 
-                    draftTracker
-                );
-                
-                console.log('🎯 EventManager initialized - all event handlers active');
-                console.log('🏈 All systems ready! App fully functional.');
-                
-                // Log event system status for debugging
-                console.log('📊 Event System Status:', eventManager.getEventStatus());
-                
-                // Make managers globally available for debugging
-                window.configManager = configManager;
-                window.navigationManager = navigationManager;
-                window.learningManager = learningManager;
-                window.draftTracker = draftTracker;
-                window.teamManager = teamManager;
-                window.waiverWireManager = waiverWireManager;
-                window.performanceAnalytics = performanceAnalytics;
-                window.leagueAnalyzer = leagueAnalyzer;
-                window.tradeAnalyzer = tradeAnalyzer;
-                window.playoffSimulator = playoffSimulator;
-                window.weatherAnalyzer = weatherAnalyzer;
-                window.predictiveAnalytics = predictiveAnalytics;
-                window.eventManager = eventManager;
-                
-            } catch (error) {
-                console.error('❌ Error initializing features:', error);
-                showFallbackNotification('⚠️ Some features may not work correctly. Please refresh the page.', 'warning');
-            }
-        }, 750);
-        
-    } catch (error) {
-        console.error('❌ Critical error initializing core systems:', error);
-        showFallbackNotification('❌ App initialization failed. Please refresh the page.', 'error');
     }
+
+    // DraftTracker, then EventManager - both before the feature pass below.
+    // EventManager owns every click handler on the page, so until it exists the
+    // UI does nothing at all: it has to be the first thing standing, not the
+    // last. It null-checks each of its four dependencies, so one that failed
+    // above only disables the actions that actually need it.
+    draftTracker = await startManager('draftTracker', 'Live draft tracking', () => new DraftTracker(configManager));
+    eventManager = await startManager('eventManager', 'Buttons and menus', () => new EventManager(
+        configManager,
+        navigationManager,
+        learningManager,
+        draftTracker
+    ));
+
+    if (eventManager) {
+        console.log('🎯 EventManager initialized - all event handlers active');
+        console.log('📊 Event System Status:', eventManager.getEventStatus());
+    } else {
+        // Nothing on the page responds to a click without it, so say so plainly
+        // rather than letting the user wonder why the buttons are dead.
+        showFallbackNotification('❌ The page is not responding to clicks. Please refresh.', 'error');
+    }
+
+    console.log('✅ Core systems initialized');
+
+    // Features last. None of them is needed for the app to be usable, and each
+    // starts in isolation so one failure cannot take the others - or the event
+    // handling - down with it.
+    setTimeout(async () => {
+        teamManager = await startManager('teamManager', 'My Team', () => new TeamManager(configManager));
+
+        waiverWireManager = await startManager('waiverWireManager', 'Waiver wire', async () => {
+            const manager = new WaiverWireManager(configManager);
+            await manager.initialize();
+            return manager;
+        });
+
+        performanceAnalytics = await startManager('performanceAnalytics', 'Performance analytics', async () => {
+            const manager = new PerformanceAnalytics(configManager);
+            await manager.initialize();
+            return manager;
+        });
+
+        leagueAnalyzer = await startManager('leagueAnalyzer', 'League analysis', async () => {
+            const manager = new LeagueAnalyzer(configManager);
+            await manager.initialize();
+            return manager;
+        });
+
+        tradeAnalyzer = await startManager('tradeAnalyzer', 'Trade analyzer', async () => {
+            const manager = new TradeAnalyzer(configManager);
+            await manager.initialize();
+            return manager;
+        });
+
+        playoffSimulator = await startManager('playoffSimulator', 'Playoff odds', async () => {
+            const manager = new PlayoffSimulator(configManager);
+            await manager.initialize();
+            return manager;
+        });
+
+        weatherAnalyzer = await startManager('weatherAnalyzer', 'Weather', async () => {
+            const manager = new WeatherAnalyzer(configManager);
+            await manager.initialize();
+            return manager;
+        });
+
+        predictiveAnalytics = await startManager('predictiveAnalytics', 'Season predictions', async () => {
+            const manager = new PredictiveAnalytics(configManager);
+            await manager.initialize();
+            return manager;
+        });
+
+        if (failedManagers.length) {
+            console.warn(`⚠️ Started with ${failedManagers.length} part(s) unavailable:`, failedManagers.join(', '));
+            // Name what is actually missing. The old message said "some features
+            // may not work" no matter how much had failed, which was as true of
+            // one broken analyser as it was of the whole UI being dead.
+            showFallbackNotification(
+                `⚠️ Unavailable right now: ${failedManagers.join(', ')}. Everything else works.`,
+                'warning'
+            );
+        } else {
+            console.log('🏈 All systems ready! App fully functional.');
+        }
+    }, 750);
 });
 
 /**
@@ -259,7 +297,11 @@ function getAppStatus() {
         leagueAnalyzer: !!leagueAnalyzer,
         tradeAnalyzer: !!tradeAnalyzer,
         playoffSimulator: !!playoffSimulator,
+        weatherAnalyzer: !!weatherAnalyzer,
+        predictiveAnalytics: !!predictiveAnalytics,
+        profileSync: !!profileSync,
         eventManager: !!eventManager,
+        failedManagers: [...failedManagers],
         eventSystemStatus: eventManager ? eventManager.getEventStatus() : null,
         configStatus: configManager ? configManager.getConfigStatus() : null
     };
