@@ -96,7 +96,9 @@ async function main() {
                 const t = new Checks(suite.name);
                 try {
                     await suite.module.run({
-                        browser, baseUrl: site.baseUrl, sleeper, t, startUnboundSite
+                        browser, baseUrl: site.baseUrl, sleeper, t, startUnboundSite,
+                        // For suites that need to seed a table the site only reads.
+                        repoRoot, persistTo: site.persistTo, log
                     });
                 } catch (error) {
                     t.check(`the suite ran to completion`, false, error.stack || error.message);

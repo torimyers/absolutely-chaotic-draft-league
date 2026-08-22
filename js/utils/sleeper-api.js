@@ -17,19 +17,42 @@ class SleeperAPI {
     }
 
     /**
+     * The IndexedDB layer, or a no-op stand-in.
+     *
+     * persistent-cache.js is a separate script tag. If it fails to load, the app
+     * should lose persistence and nothing else, so the reference is resolved at
+     * call time rather than assumed to exist.
+     */
+    persistence() {
+        return typeof persistentCache !== 'undefined' ? persistentCache : SleeperAPI.noopCache;
+    }
+
+    /**
      * Generic API fetch with caching.
      *
      * Managers all initialise at once, so a plain cache does not help on startup:
      * nothing has resolved yet when the second caller arrives. Concurrent callers
      * therefore share one in-flight promise per endpoint.
+     *
+     * `options.maxAge` overrides how long a cached entry stays usable, and
+     * `options.persist` additionally routes the endpoint through IndexedDB so it
+     * survives a reload. Persistence is opt-in: it only pays for itself on
+     * payloads that are large and change slowly.
+     *
+     * `options.preferURL` names a same-origin endpoint to try before Sleeper,
+     * falling back automatically. That fallback is what keeps the app working
+     * on a plain static deploy, in Docker, and off a file server, none of which
+     * have the D1-backed cache in front of them.
      */
-    async fetchAPI(endpoint, useCache = true) {
+    async fetchAPI(endpoint, useCache = true, options = {}) {
         const cacheKey = endpoint;
+        const maxAge = options.maxAge || this.cacheTimeout;
+        const persist = options.persist === true;
 
         // Check cache first
         if (useCache && this.cache.has(cacheKey)) {
             const cached = this.cache.get(cacheKey);
-            if (Date.now() - cached.timestamp < this.cacheTimeout) {
+            if (Date.now() - cached.timestamp < maxAge) {
                 console.log(`📦 Using cached data for: ${endpoint}`);
                 return cached.data;
             }
@@ -42,19 +65,45 @@ class SleeperAPI {
         }
 
         const request = (async () => {
-            const response = await fetch(`${this.baseURL}${endpoint}`);
-
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.status} ${response.statusText}`);
+            // The IndexedDB read happens inside the in-flight promise, not before
+            // it, so callers arriving during the read join it rather than each
+            // deserialising megabytes of their own copy.
+            if (persist && useCache) {
+                const stored = await this.persistence().get(cacheKey, maxAge);
+                // An older build may have persisted something this one considers
+                // malformed, so stored data is validated like fresh data.
+                if (stored && (!options.validate || options.validate(stored.data))) {
+                    this.cache.set(cacheKey, {
+                        data: stored.data,
+                        timestamp: stored.timestamp
+                    });
+                    const ageHours = ((Date.now() - stored.timestamp) / 3600000).toFixed(1);
+                    console.log(`💾 Restored ${endpoint} from IndexedDB (${ageHours}h old)`);
+                    return stored.data;
+                }
             }
 
-            const data = await response.json();
+            const data = options.preferURL
+                ? await this.fetchPreferred(options.preferURL, endpoint)
+                : await this.fetchJSON(`${this.baseURL}${endpoint}`);
+
+            // Validated before it is cached anywhere. Storing a malformed
+            // payload would hand it back for the next 24 hours, long after the
+            // upstream problem had passed.
+            if (options.validate && !options.validate(data)) {
+                throw new SleeperAPI.InvalidPayloadError(
+                    `${endpoint} returned ${Array.isArray(data) ? 'an array' : typeof data}`
+                );
+            }
+
+            const timestamp = Date.now();
 
             // Cache the response
-            this.cache.set(cacheKey, {
-                data,
-                timestamp: Date.now()
-            });
+            this.cache.set(cacheKey, { data, timestamp });
+
+            // Deliberately not awaited: the data is already in hand, and cloning
+            // it into IndexedDB should not delay the render.
+            if (persist) this.persistence().set(cacheKey, data, timestamp);
 
             return data;
         })();
@@ -69,6 +118,48 @@ class SleeperAPI {
         } finally {
             this.inFlight.delete(cacheKey);
         }
+    }
+
+    /**
+     * Fetches one URL as JSON.
+     *
+     * A same-origin miss can come back as the SPA shell with a 200 - both the
+     * Pages catch-all rewrite and the nginx try_files in the Docker image do
+     * that - so the content type is checked rather than assumed. Parsing HTML
+     * as JSON would otherwise surface as an unrelated syntax error.
+     */
+    async fetchJSON(url) {
+        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const type = response.headers.get('Content-Type') || '';
+        if (!type.includes('json')) {
+            throw new Error(`Expected JSON from ${url}, got ${type || 'no content type'}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Tries the cached same-origin copy first, then Sleeper.
+     *
+     * The cached copy is smaller and spares Sleeper a request, but it is an
+     * optimisation: any failure at all falls through, because a deployment
+     * without the D1 cache in front of it must behave exactly as it did before.
+     */
+    async fetchPreferred(preferURL, endpoint) {
+        try {
+            const data = await this.fetchJSON(preferURL);
+            console.log(`🚀 Loaded ${endpoint} from the cached copy at ${preferURL}`);
+            return data;
+        } catch (error) {
+            console.warn(`⚠️ ${preferURL} unavailable (${error.message}); using Sleeper directly`);
+        }
+
+        return this.fetchJSON(`${this.baseURL}${endpoint}`);
     }
 
     /**
@@ -121,35 +212,36 @@ class SleeperAPI {
     }
 
     /**
-     * Get all NFL players (large dataset, cached for longer).
+     * Get all NFL players.
+     *
+     * Roughly 5 MB, and the only endpoint the app uses where the download
+     * dominates startup, so this is the one that earns a persistent cache. The
+     * contents - team, position, injury status - move on a daily cadence, which
+     * is what sets the 24 hour lifetime.
      *
      * Always resolves to an object keyed by player ID - the shape every caller
-     * assumes when it does `allPlayers[id]` or `Object.values(allPlayers)`.
-     * Same reasoning as getTrendingPlayers: a malformed success used to reach
-     * those call sites and throw. A failed request still rejects.
+     * assumes when it does `allPlayers[id]` or `Object.values(allPlayers)`. A
+     * malformed success used to reach those call sites and throw. A failed
+     * request still rejects.
      */
     async getAllPlayers() {
-        const cacheKey = '/players/nfl';
-        
-        // Check for longer cache (24 hours for player data)
-        if (this.cache.has(cacheKey)) {
-            const cached = this.cache.get(cacheKey);
-            if (Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
-                console.log('📦 Using cached player database');
-                return cached.data;
+        try {
+            return await this.fetchAPI('/players/nfl', true, {
+                maxAge: SleeperAPI.PLAYER_CACHE_MAX_AGE,
+                persist: true,
+                preferURL: SleeperAPI.PLAYER_CACHE_URL,
+                validate: SleeperAPI.isPlayerMap
+            });
+        } catch (error) {
+            // Only a shape failure becomes an empty map. A network or HTTP
+            // failure still rejects, so callers can tell "Sleeper is down" from
+            // "Sleeper answered with something unusable".
+            if (error instanceof SleeperAPI.InvalidPayloadError) {
+                console.warn('⚠️ Sleeper returned no usable player database:', error.message);
+                return {};
             }
+            throw error;
         }
-        
-        const players = await this.fetchAPI('/players/nfl', false);
-
-        // An array would survive Object.values() but break every lookup by ID,
-        // so it is rejected here rather than half-working downstream.
-        if (!players || typeof players !== 'object' || Array.isArray(players)) {
-            console.warn('⚠️ Sleeper returned no usable player database:', players);
-            return {};
-        }
-
-        return players;
     }
 
     /**
@@ -309,10 +401,14 @@ class SleeperAPI {
     }
 
     /**
-     * Clear cache (useful for forcing fresh data)
+     * Clear cache (useful for forcing fresh data).
+     *
+     * Clears IndexedDB too - leaving it behind would mean the next reload
+     * restored exactly the data the caller asked to discard.
      */
-    clearCache() {
+    async clearCache() {
         this.cache.clear();
+        await this.persistence().clear();
         console.log('🧹 Sleeper API cache cleared');
     }
 
@@ -378,6 +474,31 @@ class SleeperAPI {
 // One cache and one in-flight map for every instance in the page.
 SleeperAPI.sharedCache = new Map();
 SleeperAPI.sharedInFlight = new Map();
+
+// How long the player database stays usable, in memory and in IndexedDB alike.
+SleeperAPI.PLAYER_CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
+
+// Same-origin copy of the player database, trimmed to the fields the app reads
+// and refreshed once a day by workers/player-sync. Absent on a static-only
+// deploy, in which case getAllPlayers falls back to Sleeper.
+SleeperAPI.PLAYER_CACHE_URL = '/api/players';
+
+/** Thrown when a response parses but is not the shape callers rely on. */
+SleeperAPI.InvalidPayloadError = class InvalidPayloadError extends Error {};
+
+// An array would survive Object.values() but break every lookup by id, so it is
+// rejected here rather than half-working downstream.
+SleeperAPI.isPlayerMap = data =>
+    Boolean(data) && typeof data === 'object' && !Array.isArray(data);
+
+// Stand-in used when persistent-cache.js is absent: every lookup misses, every
+// write is discarded, and the in-memory cache carries the page on its own.
+SleeperAPI.noopCache = {
+    get: async () => null,
+    set: async () => false,
+    delete: async () => false,
+    clear: async () => false
+};
 
 // Create singleton instance
 const sleeperAPI = new SleeperAPI();

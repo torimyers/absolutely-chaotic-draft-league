@@ -71,8 +71,9 @@ Analysis" button, and is banner-labelled on the page.
 - **Styling**: Custom CSS with CSS Grid and Flexbox
 - **APIs**: Sleeper (league, rosters, players), Open-Meteo (weather), ESPN (NFL schedule) - all keyless, no signup required
 - **Hosting**: Cloudflare Pages
-- **Sync backend** (optional): Cloudflare Pages Functions + D1, used only for cross-device league settings
+- **Backend** (both optional): Cloudflare Pages Functions + D1. One database, two uses - cross-device league settings, and a cached copy of Sleeper's player list refreshed daily by a Worker on a Cron Trigger
 - **PWA**: Installable with offline support
+- **Caching**: Three layers for the player database - the D1 table, IndexedDB in the browser, and an in-memory map per page
 
 ## 📦 Quick Start
 
@@ -163,6 +164,10 @@ The app is fully installable on mobile devices:
 - **Your draft plan is never uploaded** - Sync carries league settings only. The
   draft plan and learning progress stay in the browser; use Save Backup to move
   those
+- **The player cache holds nothing about you** - The site keeps a server-side
+  copy of Sleeper's public NFL player list so every visitor is not re-downloading
+  5 MB of it. It is the same list for everyone and contains no user data. Your
+  own copy of it lives in IndexedDB, which "clear site data" removes
 - **Secure API calls** - Direct HTTPS to Sleeper, Open-Meteo and ESPN. No credentials or personal data are sent to any of them; requests carry only a league ID, a week number or a pair of coordinates
 - **No tracking** - No analytics or user tracking
 - **Open source** - Audit the code yourself

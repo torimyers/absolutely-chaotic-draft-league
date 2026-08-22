@@ -57,6 +57,7 @@ const PRECACHE_URLS = [
   './js/features/playoff-simulator.js',
   './js/features/weather-analyzer.js',
   './js/features/predictive-analytics.js',
+  './js/utils/persistent-cache.js',
   './js/utils/sleeper-api.js',
   './js/utils/player-stats.js',
   './js/app.js',
@@ -67,8 +68,12 @@ const PRECACHE_URLS = [
 ];
 
 // Requests we must never serve from cache: live fantasy data, weather forecasts,
-// and this site's own profile-sync endpoints. The sync responses are per-user
-// and change on another device, so a cached copy is worse than no copy at all.
+// and this site's own /api/* endpoints. The sync responses are per-user and
+// change on another device, so a cached copy is worse than no copy at all. The
+// cached player database is the opposite problem - it already has a 24 hour
+// IndexedDB copy in the page and Cache-Control at the edge in front of it, and a
+// third, unversioned copy in Cache Storage would only make a stale list harder
+// to be rid of.
 function isApiRequest(url) {
   if (url.origin !== self.location.origin) return true;
   return url.pathname === '/api' || url.pathname.startsWith('/api/');

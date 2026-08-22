@@ -51,6 +51,5 @@ coverage/
 # Docker
 docker-compose.override.yml
 .docker/
-
 # Wrangler local state (local D1 database, caches) from `wrangler pages dev`
 .wrangler/

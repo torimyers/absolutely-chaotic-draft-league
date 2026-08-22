@@ -142,6 +142,72 @@ other than Sleeper.
 
 ## Step 3: Verify Deployment
 
+## Step 2.6: Enable the Player Cache (Optional)
+
+Sleeper asks that `/players/nfl` be called at most once a day. It is roughly
+5 MB, and with nothing in front of it every visitor pays that download. This
+puts a trimmed copy in D1 - the same database as step 2.5 - refreshed once a
+day for everyone.
+
+Skip it and the app fetches from Sleeper directly, exactly as it did before:
+`/api/players` answering 503 is a handled case, not an error.
+
+Step 2.5 already created the database, applied `schema.sql` (which carries the
+player tables too) and bound `DB` to the Pages project. What remains is the
+Worker that refreshes it, which is separate because Pages Functions cannot run
+on a Cron Trigger.
+
+### 2.6.1 Enable the Worker's binding
+
+Uncomment the `[[d1_databases]]` block at the bottom of
+`workers/player-sync/wrangler.toml` and paste in the same `database_id` used in
+step 2.5. It ships commented out for the same reason that one does.
+
+### 2.6.2 Deploy the Worker
+
+```bash
+npx wrangler deploy --config workers/player-sync/wrangler.toml
+```
+
+The cron is set in that file: `12 9 * * *`, daily at 09:12 UTC.
+
+### 2.6.3 Set the manual-refresh secret
+
+```bash
+openssl rand -hex 32   # generate one, or use your own
+npx wrangler secret put REFRESH_SECRET --config workers/player-sync/wrangler.toml
+```
+
+### 2.6.4 Populate it
+
+The cron will not fire until its next scheduled time, so run the first refresh
+by hand:
+
+```bash
+curl -X POST https://player-sync.<your-subdomain>.workers.dev/refresh \
+  -H "Authorization: Bearer $REFRESH_SECRET"
+```
+
+```json
+{"ok":true,"trigger":"manual","generation":1,"received":11400,"stored":2300,"durationMs":3100}
+```
+
+`received` is what Sleeper sent; `stored` is what survived filtering to
+fantasy-relevant positions. Use the same call any time you want fresh injury
+statuses without waiting for the cron.
+
+### 2.6.5 Check it
+
+```bash
+curl -s -D - "https://texasperfect.win/api/players?limit=5" | head -20
+```
+
+`X-Players-Count`, `X-Players-Generation` and `X-Players-Refreshed-At` say which
+generation you are being served and when it was built. A 503 means the binding
+is missing; a 503 saying the cache is not populated means the Worker has not run
+yet.
+
+
 1. Visit https://texasperfect.win
 2. Check that:
    - The app loads correctly
@@ -158,14 +224,19 @@ other than Sleeper.
 ✅ **Security Headers**: Configured in `_headers` file
 ✅ **CSP**: Content Security Policy for XSS protection
 ✅ **HSTS**: Enforced via Cloudflare
-✅ **Minimal server-side code**: The only server code is the optional profile
-sync in `functions/api/profile/`, which stores a fixed, range-checked list of
-league settings and nothing else. Leave sync unconfigured and the site is fully
-static.
+✅ **Minimal server-side code**: Two optional Functions - profile sync in
+`functions/api/profile/`, which stores a fixed, range-checked list of league
+settings and nothing else, and a read-only player-cache query in
+`functions/api/players.js`. Leave both unconfigured and the site is fully static.
+✅ **The player cache holds no user data**: It is a trimmed copy of Sleeper's
+public player list, identical for every visitor
+✅ **Manual refresh is authenticated**: `REFRESH_SECRET` is a Worker secret,
+compared in constant time
 
 ## Performance Optimizations
 
 The deployment includes:
+- A D1-backed player cache: Sleeper's ~5 MB player list is fetched once a day and served trimmed, roughly 11x smaller in full and 83x smaller for a draft board's top 300
 - Cloudflare CDN for global distribution
 - Brotli compression
 - HTTP/3 support
@@ -195,6 +266,19 @@ The deployment includes:
 - Check network tab for failed requests
 
 ## Maintenance
+
+### Refreshing player data
+
+The cron handles this daily. To force it - after a wave of injury news, say:
+
+```bash
+curl -X POST https://player-sync.<your-subdomain>.workers.dev/refresh \
+  -H "Authorization: Bearer $REFRESH_SECRET"
+```
+
+A refresh writes a whole new generation before publishing it, so readers stay
+on the previous one until the new copy is complete. A failed run leaves the old
+data in place rather than a half-written table.
 
 ### Updating Content
 1. Make changes locally

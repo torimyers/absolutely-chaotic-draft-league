@@ -157,6 +157,27 @@ export async function startSite({ repoRoot, sleeperBaseUrl, withDatabase = true,
     };
 }
 
+/**
+ * Runs SQL against the throwaway database a `startSite` call created.
+ *
+ * Suites that read a table need something to have written it first. The player
+ * cache is normally filled by workers/player-sync, which is a separate Worker
+ * and not part of what `wrangler pages dev` boots, so its suite seeds the rows
+ * directly instead.
+ */
+export async function execSql({ repoRoot, persistTo, sql, log = () => {} }) {
+    await runWrangler(
+        repoRoot,
+        [
+            'd1', 'execute', TEST_DB_NAME,
+            '--config', TEST_CONFIG,
+            '--local', '--persist-to', persistTo,
+            '--yes', '--command', sql
+        ],
+        log
+    );
+}
+
 function wranglerBin(repoRoot) {
     return join(repoRoot, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
 }
