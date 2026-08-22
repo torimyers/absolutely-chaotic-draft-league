@@ -25,8 +25,14 @@ import { join } from 'node:path';
  * ID on the command line. Local D1 files are keyed by the ID, so the two agree.
  */
 const TEST_CONFIG = 'tests/wrangler.test.toml';
-const TEST_DB_NAME = 'fantasy-profiles-test';
-const TEST_DB_ID = 'fantasy-profiles-test-local';
+
+// The two databases the site binds, each with its own schema file. Production
+// keeps them apart because the player cache is bulk rewritten daily and has no
+// business sharing a connection with user profiles; the tests mirror that.
+const TEST_DATABASES = [
+    { binding: 'DB', name: 'fantasy-profiles-test', id: 'fantasy-profiles-test-local', schema: './schema.sql' },
+    { binding: 'PLAYERS_DB', name: 'fantasy-players-test', id: 'fantasy-players-test-local', schema: './schema-players.sql' }
+];
 
 const WRANGLER_START_TIMEOUT_MS = 120_000;
 
@@ -109,16 +115,18 @@ export async function startSite({ repoRoot, sleeperBaseUrl, withDatabase = true,
     const persistTo = await mkdtemp(join(tmpdir(), 'accd-tests-'));
 
     if (withDatabase) {
-        await runWrangler(
-            repoRoot,
-            [
-                'd1', 'execute', TEST_DB_NAME,
-                '--config', TEST_CONFIG,
-                '--local', '--persist-to', persistTo,
-                '--yes', '--file=./schema.sql'
-            ],
-            log
-        );
+        for (const database of TEST_DATABASES) {
+            await runWrangler(
+                repoRoot,
+                [
+                    'd1', 'execute', database.name,
+                    '--config', TEST_CONFIG,
+                    '--local', '--persist-to', persistTo,
+                    '--yes', `--file=${database.schema}`
+                ],
+                log
+            );
+        }
     }
 
     const port = await freePort();
@@ -129,8 +137,10 @@ export async function startSite({ repoRoot, sleeperBaseUrl, withDatabase = true,
             'pages', 'dev', '.',
             '--port', String(port),
             // Omitted deliberately when withDatabase is false, to reproduce a
-            // deployment where sync was never set up.
-            ...(withDatabase ? ['--d1', `DB=${TEST_DB_ID}`] : []),
+            // deployment where neither database was ever set up.
+            ...(withDatabase
+                ? TEST_DATABASES.flatMap(d => ['--d1', `${d.binding}=${d.id}`])
+                : []),
             '--persist-to', persistTo,
             '--binding', `SLEEPER_API_BASE=${sleeperBaseUrl}`
         ],
@@ -165,11 +175,14 @@ export async function startSite({ repoRoot, sleeperBaseUrl, withDatabase = true,
  * and not part of what `wrangler pages dev` boots, so its suite seeds the rows
  * directly instead.
  */
-export async function execSql({ repoRoot, persistTo, sql, log = () => {} }) {
+export async function execSql({ repoRoot, persistTo, sql, binding = 'DB', log = () => {} }) {
+    const database = TEST_DATABASES.find(d => d.binding === binding);
+    if (!database) throw new Error(`No test database bound as ${binding}`);
+
     await runWrangler(
         repoRoot,
         [
-            'd1', 'execute', TEST_DB_NAME,
+            'd1', 'execute', database.name,
             '--config', TEST_CONFIG,
             '--local', '--persist-to', persistTo,
             '--yes', '--command', sql

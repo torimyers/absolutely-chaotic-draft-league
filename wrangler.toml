@@ -14,31 +14,38 @@ compatibility_date = "2024-01-01"
 # Static site, no build step: the repository root is what gets served.
 pages_build_output_dir = "."
 
-# Cross-device profile sync storage, DISABLED until someone sets it up.
+# D1 bindings, deliberately COMMENTED OUT.
 #
-# This stays commented out deliberately. A deployment that reads a binding for a
-# database which does not exist in the account fails to build, so shipping a
-# placeholder ID here would make the repository undeployable for everyone who
-# has not created the database - and sync is meant to be optional. With no
-# binding the sync endpoints answer 503 and the app carries on using local
-# storage, which is the intended unconfigured behaviour.
+# The Git-integrated Pages deployment reads its bindings from the dashboard, not
+# from this file, so uncommenting these buys the live site nothing - the
+# dashboard entries under Settings -> Functions -> D1 database bindings are what
+# actually take effect. What it does cost is real: a build that reads a binding
+# for a database missing from the account fails outright, which is what broke
+# the Pages check on #7, and `wrangler pages dev` picks these up too, so with
+# them enabled the test suite can no longer boot a site that has no bindings at
+# all - the case that proves an unconfigured deployment degrades instead of
+# erroring.
 #
-# To enable it:
+# Uncomment only for a manual `wrangler pages deploy` from an account that has
+# both databases. The ids below are this project's; a different account needs
+# its own from `wrangler d1 create`.
 #
-#   1. wrangler d1 create fantasy-profiles
-#   2. wrangler d1 execute fantasy-profiles --remote --file=./schema.sql
-#   3. uncomment the block below and paste in the ID from step 1
-#   4. add the same binding under Pages -> Settings -> Functions -> D1 database
-#      bindings, which is what the Git-integrated deployment actually reads
-#
-# `npm test` does not need any of this: it uses tests/wrangler.test.toml, which
-# carries its own local-only binding.
-#
-[[d1_databases]]
-binding = "fantasy_profiles"
-database_name = "fantasy-profiles"
-database_id = "533786c8-9106-4c48-8e6f-bd1f3abbf428"
+# Two databases, not one, because the features have nothing in common and very
+# different write patterns: profiles takes a row at a time from real users, the
+# player cache is rewritten wholesale every day. Keeping them apart means the
+# daily bulk rewrite never holds a connection to user data.
 
-binding = "fantasy_players"
-database_name = "fantasy-players"
-database_id = "9348de19-71b8-4f62-a13c-cb44360c9b2d"
+# Cross-device profile sync. Read by functions/api/profile/.
+#
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "fantasy-profiles"
+# database_id = "533786c8-9106-4c48-8e6f-bd1f3abbf428"
+
+# Cached NFL player list. Read by functions/api/players.js, written by
+# workers/player-sync.
+#
+# [[d1_databases]]
+# binding = "PLAYERS_DB"
+# database_name = "fantasy-players"
+# database_id = "9348de19-71b8-4f62-a13c-cb44360c9b2d"
