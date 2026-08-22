@@ -39,7 +39,10 @@
 </head>
 <body data-theme="teal">
     <!-- Configuration Panel -->
-    <div class="config-panel" id="configPanel">
+    <!-- Starts hidden: this is a full-screen modal, so a returning user whose
+         league is already saved must never see it. ConfigManager reveals it
+         only when there is nothing configured yet. -->
+    <div class="config-panel hidden" id="configPanel">
         <div class="config-card">
             <h2 class="config-title">🏈 Welcome to Fantasy Football Command Center</h2>
             

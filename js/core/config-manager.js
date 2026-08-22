@@ -148,21 +148,31 @@ class ConfigManager {
     async loadConfiguration() {
         // Try to load from localStorage first
         const saved = localStorage.getItem('fantasyAppConfig');
+
+        // Which settings the user has actually saved. Meta tags must not
+        // overwrite these - see loadFromEnvironment.
+        let savedKeys = [];
+
         if (saved) {
             try {
-                this.config = { ...this.config, ...JSON.parse(saved) };
-                // Repairs profiles saved before the mock-draft flags were cleared properly.
-                this.normalizeSleeperTarget(this.config);
-                // ...and profiles that stored Super Flex as a scoring format.
-                this.normalizeFormats(this.config);
+                const parsed = JSON.parse(saved);
+                savedKeys = Object.keys(parsed);
+                this.config = { ...this.config, ...parsed };
             } catch (e) {
                 console.warn('Could not load saved configuration, using defaults');
             }
         }
 
-        // Load from environment variables (meta tags)
-        this.loadFromEnvironment();
-        
+        // Load from environment variables (meta tags), without clobbering the
+        // saved profile.
+        this.loadFromEnvironment(savedKeys);
+
+        // Run after the environment pass so meta-supplied values are validated
+        // too. Repairs profiles saved before the mock-draft flags were cleared
+        // properly, and profiles that stored Super Flex as a scoring format.
+        this.normalizeSleeperTarget(this.config);
+        this.normalizeFormats(this.config);
+
         // Apply configuration to the app
         this.applyConfiguration();
         
@@ -180,10 +190,28 @@ class ConfigManager {
                     }
                 }
             }, 1000);
+        } else {
+            // Belt and braces: the panel is a full-screen modal, so if anything
+            // ever leaves it open, a returning user would be forced to re-enter
+            // a league that is already saved.
+            const configPanel = document.getElementById('configPanel');
+            if (configPanel) {
+                configPanel.classList.add('hidden');
+            }
         }
     }
 
-    loadFromEnvironment() {
+    /**
+     * Applies the `<meta name="FANTASY_*">` tags. These are deploy-time defaults
+     * for self-hosters, so a value the user has already saved always wins: the
+     * tags ship with non-empty defaults (league size 12, Half PPR, teal, ...) and
+     * used to be re-applied on every load, silently resetting a saved profile's
+     * league size, scoring format, record, ranking and theme on every refresh.
+     *
+     * @param {string[]} savedKeys Config keys restored from localStorage.
+     */
+    loadFromEnvironment(savedKeys = []) {
+        const alreadySaved = new Set(savedKeys);
         const envVars = {
             FANTASY_LEAGUE_NAME: 'leagueName',
             FANTASY_TEAM_NAME: 'teamName',
@@ -200,9 +228,13 @@ class ConfigManager {
         };
 
         Object.keys(envVars).forEach(envVar => {
+            const configKey = envVars[envVar];
+
+            // The user's own saved value takes precedence over the deploy default.
+            if (alreadySaved.has(configKey)) return;
+
             const metaTag = document.querySelector(`meta[name="${envVar}"]`);
             if (metaTag && metaTag.content && metaTag.content.trim() !== '') {
-                const configKey = envVars[envVar];
                 const value = metaTag.content;
                 
                 // Convert numeric values
