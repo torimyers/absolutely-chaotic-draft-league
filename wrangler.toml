@@ -34,7 +34,11 @@ pages_build_output_dir = "."
 # `npm test` does not need any of this: it uses tests/wrangler.test.toml, which
 # carries its own local-only binding.
 #
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "fantasy-profiles"
-# database_id = "paste-the-id-from-wrangler-d1-create-here"
+[[d1_databases]]
+binding = "fantasy_profiles"
+database_name = "fantasy-profiles"
+database_id = "533786c8-9106-4c48-8e6f-bd1f3abbf428"
+
+binding = "fantasy_players"
+database_name = "fantasy-players"
+database_id = "9348de19-71b8-4f62-a13c-cb44360c9b2d"
