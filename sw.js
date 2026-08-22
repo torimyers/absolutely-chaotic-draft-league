@@ -66,9 +66,14 @@ const PRECACHE_URLS = [
   './icons/icon.svg',
 ];
 
-// Requests we must never serve from cache: live fantasy data and weather forecasts.
+// Requests we must never serve from cache: live fantasy data and weather
+// forecasts, plus our own /api/* endpoints. The cached player database already
+// has two layers in front of it - a 24 hour IndexedDB copy in the page and
+// Cache-Control at the edge - and a third, unversioned copy sitting in Cache
+// Storage would only make a stale list harder to get rid of.
 function isApiRequest(url) {
-  return url.origin !== self.location.origin;
+  if (url.origin !== self.location.origin) return true;
+  return url.pathname.startsWith('/api/');
 }
 
 // Install - precache the app shell. Each URL is added individually so one bad

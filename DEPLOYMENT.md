@@ -55,7 +55,90 @@ Cloudflare builds straight from the connected repository.
 3. Click "Create deployment"
 4. Upload your files or trigger from GitHub
 
-## Step 3: Verify Deployment
+## Step 3: Set Up the Player Cache (D1)
+
+Sleeper asks that `/players/nfl` be called at most once a day. It is roughly
+5 MB, and without a cache in front of it every visitor pays that download.
+This step puts a trimmed copy in D1, refreshed once a day for everyone.
+
+It is optional. Skip it and the app fetches from Sleeper directly, exactly as
+it did before - `/api/players` failing is a normal, handled case.
+
+### 3.1 Create the database
+
+```bash
+npx wrangler d1 create fantasy-players
+```
+
+Copy the `database_id` it prints into `workers/player-sync/wrangler.toml`,
+replacing `REPLACE_WITH_D1_DATABASE_ID`.
+
+### 3.2 Create the tables
+
+```bash
+npx wrangler d1 execute fantasy-players --remote --file=schema.sql
+```
+
+### 3.3 Bind the database to Pages
+
+In the Pages project: **Settings → Bindings → D1 database bindings**. Add a
+binding named `DB` pointing at `fantasy-players`. Add it to both Production and
+Preview, then redeploy so the binding takes effect.
+
+The variable name must be exactly `DB` - that is what `functions/api/players.js`
+reads.
+
+### 3.4 Deploy the refresh Worker
+
+Pages Functions cannot run on a schedule, so the daily refresh is a separate
+Worker sharing the same database.
+
+```bash
+npx wrangler deploy --config workers/player-sync/wrangler.toml
+```
+
+Its cron is set in that file (`12 9 * * *`, daily at 09:12 UTC).
+
+### 3.5 Set the manual-refresh secret
+
+```bash
+# Generate one, or use your own
+openssl rand -hex 32
+
+npx wrangler secret put REFRESH_SECRET --config workers/player-sync/wrangler.toml
+```
+
+### 3.6 Populate it
+
+The cron will not fire until its next scheduled time, so run the first refresh
+by hand:
+
+```bash
+curl -X POST https://player-sync.<your-subdomain>.workers.dev/refresh \
+  -H "Authorization: Bearer $REFRESH_SECRET"
+```
+
+Expect something like:
+
+```json
+{"ok":true,"trigger":"manual","generation":1,"received":11400,"stored":2300,"durationMs":3100}
+```
+
+`received` is what Sleeper sent; `stored` is what survived filtering to
+fantasy-relevant positions. Use the same call any time you want fresh injury
+statuses without waiting for the cron.
+
+### 3.7 Check it
+
+```bash
+curl -s -D - https://texasperfect.win/api/players?limit=5 | head -20
+```
+
+The `X-Players-Count`, `X-Players-Generation` and `X-Players-Refreshed-At`
+response headers tell you which generation you are being served and when it
+was built.
+
+## Step 4: Verify Deployment
 
 1. Visit https://texasperfect.win
 2. Check that:
@@ -70,11 +153,13 @@ Cloudflare builds straight from the connected repository.
 ✅ **Security Headers**: Configured in `_headers` file
 ✅ **CSP**: Content Security Policy for XSS protection
 ✅ **HSTS**: Enforced via Cloudflare
-✅ **No server-side code**: Static site = reduced attack surface
+✅ **Minimal server-side code**: Two small Functions - a read-only D1 query and a scheduled refresh. No user data passes through either
+✅ **Manual refresh is authenticated**: `REFRESH_SECRET` is a Worker secret, compared in constant time
 
 ## Performance Optimizations
 
 The deployment includes:
+- A D1-backed player cache: Sleeper's ~5 MB player list is fetched once a day and served trimmed, roughly 11x smaller in full and 83x smaller for a draft board's top 300
 - Cloudflare CDN for global distribution
 - Brotli compression
 - HTTP/3 support
@@ -104,6 +189,19 @@ The deployment includes:
 - Check network tab for failed requests
 
 ## Maintenance
+
+### Refreshing player data
+
+The cron handles this daily. To force it - after a wave of injury news, say:
+
+```bash
+curl -X POST https://player-sync.<your-subdomain>.workers.dev/refresh \
+  -H "Authorization: Bearer $REFRESH_SECRET"
+```
+
+A refresh writes a whole new generation before publishing it, so readers stay
+on the previous one until the new copy is complete. A failed run leaves the old
+data in place rather than a half-written table.
 
 ### Updating Content
 1. Make changes locally

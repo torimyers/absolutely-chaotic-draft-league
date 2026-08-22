@@ -38,6 +38,11 @@ class SleeperAPI {
      * `options.persist` additionally routes the endpoint through IndexedDB so it
      * survives a reload. Persistence is opt-in: it only pays for itself on
      * payloads that are large and change slowly.
+     *
+     * `options.preferURL` names a same-origin endpoint to try before Sleeper,
+     * falling back automatically. That fallback is what keeps the app working
+     * on a plain static deploy, in Docker, and off a file server, none of which
+     * have the D1-backed cache in front of them.
      */
     async fetchAPI(endpoint, useCache = true, options = {}) {
         const cacheKey = endpoint;
@@ -76,13 +81,9 @@ class SleeperAPI {
                 }
             }
 
-            const response = await fetch(`${this.baseURL}${endpoint}`);
-
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.status} ${response.statusText}`);
-            }
-
-            const data = await response.json();
+            const data = options.preferURL
+                ? await this.fetchPreferred(options.preferURL, endpoint)
+                : await this.fetchJSON(`${this.baseURL}${endpoint}`);
             const timestamp = Date.now();
 
             // Cache the response
@@ -105,6 +106,48 @@ class SleeperAPI {
         } finally {
             this.inFlight.delete(cacheKey);
         }
+    }
+
+    /**
+     * Fetches one URL as JSON.
+     *
+     * A same-origin miss can come back as the SPA shell with a 200 - both the
+     * Pages catch-all rewrite and the nginx try_files in the Docker image do
+     * that - so the content type is checked rather than assumed. Parsing HTML
+     * as JSON would otherwise surface as an unrelated syntax error.
+     */
+    async fetchJSON(url) {
+        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const type = response.headers.get('Content-Type') || '';
+        if (!type.includes('json')) {
+            throw new Error(`Expected JSON from ${url}, got ${type || 'no content type'}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Tries the cached same-origin copy first, then Sleeper.
+     *
+     * The cached copy is smaller and spares Sleeper a request, but it is an
+     * optimisation: any failure at all falls through, because a deployment
+     * without the D1 cache in front of it must behave exactly as it did before.
+     */
+    async fetchPreferred(preferURL, endpoint) {
+        try {
+            const data = await this.fetchJSON(preferURL);
+            console.log(`🚀 Loaded ${endpoint} from the cached copy at ${preferURL}`);
+            return data;
+        } catch (error) {
+            console.warn(`⚠️ ${preferURL} unavailable (${error.message}); using Sleeper directly`);
+        }
+
+        return this.fetchJSON(`${this.baseURL}${endpoint}`);
     }
 
     /**
@@ -167,7 +210,8 @@ class SleeperAPI {
     async getAllPlayers() {
         return this.fetchAPI('/players/nfl', true, {
             maxAge: SleeperAPI.PLAYER_CACHE_MAX_AGE,
-            persist: true
+            persist: true,
+            preferURL: SleeperAPI.PLAYER_CACHE_URL
         });
     }
 
@@ -386,6 +430,11 @@ SleeperAPI.sharedInFlight = new Map();
 
 // How long the player database stays usable, in memory and in IndexedDB alike.
 SleeperAPI.PLAYER_CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
+
+// Same-origin copy of the player database, trimmed to the fields the app reads
+// and refreshed once a day by workers/player-sync. Absent on a static-only
+// deploy, in which case getAllPlayers falls back to Sleeper.
+SleeperAPI.PLAYER_CACHE_URL = '/api/players';
 
 // Stand-in used when persistent-cache.js is absent: every lookup misses, every
 // write is discarded, and the in-memory cache carries the page on its own.

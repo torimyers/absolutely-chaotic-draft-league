@@ -1,0 +1,25 @@
+# Refreshes the cached NFL player database in D1 once a day.
+#
+# Separate from the Pages project because Pages Functions cannot run on a Cron
+# Trigger. Both bind the same D1 database: this Worker writes it, the Pages
+# Function at /api/players reads it.
+#
+# Deploy:  npx wrangler deploy --config workers/player-sync/wrangler.toml
+# Secret:  npx wrangler secret put REFRESH_SECRET --config workers/player-sync/wrangler.toml
+
+name = "player-sync"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# 09:12 UTC daily - early morning US, after overnight injury and roster moves
+# have settled. The offset minute keeps it off the busy top of the hour.
+[triggers]
+crons = ["12 9 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fantasy-players"
+# Replace with the id printed by: npx wrangler d1 create fantasy-players
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# REFRESH_SECRET is a secret, not a var - set it with `wrangler secret put`.
