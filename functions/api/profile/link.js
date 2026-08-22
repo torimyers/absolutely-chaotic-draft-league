@@ -14,13 +14,30 @@
  * Returns: { "userId": "12345...", "username": "torimyers", "displayName": "Tori" }
  */
 
-import { json, notAllowed, readJsonBody } from '../../../lib/http.js';
+import { json, notAllowed, readJsonBody, tooManyRequests } from '../../../lib/http.js';
 import { sleeperUserUrl } from '../../../lib/sleeper.js';
+import { LIMITS, clientKey, recordRequest } from '../../../lib/rate-limit.js';
 
 /** Sleeper usernames are short and alphanumeric-ish; reject anything else early. */
 const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/;
 
 export async function onRequestPost(context) {
+    const db = context.env.DB;
+
+    // Linking an account is pointless with nowhere to store the profile, and
+    // without the database there is no counter to rate limit against - which
+    // would leave this an unlimited proxy onto Sleeper's API. Refuse both
+    // problems at once, the same way the read and write endpoints do.
+    if (!db) {
+        return json({ error: 'Profile sync is not configured on this deployment' }, 503);
+    }
+
+    // The tightest limit of the three: this is the only path that makes the
+    // deployment call out to Sleeper, so an unlimited one turns the site into a
+    // free proxy for hammering their API.
+    const limit = await recordRequest(db, 'link', clientKey(context.request), LIMITS.link);
+    if (!limit.allowed) return tooManyRequests(limit.retryAfter);
+
     const body = await readJsonBody(context.request);
     if (!body.ok) return json({ error: body.error }, 400);
 

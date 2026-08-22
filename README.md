@@ -188,6 +188,9 @@ account:
   renamed or recycled username cannot hand your profile to someone else.
 - The server stores only a fixed list of known settings, each range-checked, so
   the endpoint cannot be used as a general-purpose data store.
+- Every endpoint is rate limited per IP (10/min for linking, 20/min for writes,
+  60/min for reads), enforced in the Functions so it works on any Cloudflare
+  plan.
 
 **With sync off, none of this applies** - the app behaves exactly as it always
 has, everything stays in `localStorage`, and the sync endpoints are never called.

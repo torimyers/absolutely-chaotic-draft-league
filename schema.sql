@@ -33,3 +33,23 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- Supports pruning abandoned profiles by age.
 CREATE INDEX IF NOT EXISTS idx_profiles_written_at ON profiles (written_at);
+
+-- Rate-limit counters.
+--
+-- The sync endpoints have no authentication, and Cloudflare's WAF rate-limiting
+-- rules are not available on every plan, so the limit is enforced in the
+-- Functions instead. One row per client per endpoint per time window; rows are
+-- deleted once expired.
+--
+-- Safe to apply to an existing database: every statement in this file is
+-- IF NOT EXISTS, so re-running it only adds what is missing.
+CREATE TABLE IF NOT EXISTS rate_limits (
+    -- "<scope>:<client>:<window start>", so a new window is simply a new row.
+    bucket     TEXT PRIMARY KEY,
+    count      INTEGER NOT NULL,
+    -- Epoch milliseconds at which this window closes.
+    expires_at INTEGER NOT NULL
+);
+
+-- Supports the cleanup sweep that drops closed windows.
+CREATE INDEX IF NOT EXISTS idx_rate_limits_expires_at ON rate_limits (expires_at);

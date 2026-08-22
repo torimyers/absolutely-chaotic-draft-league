@@ -19,20 +19,29 @@ export const sleeperAccounts = [
 ];
 
 const KNOWN_ID = '555000111222';
+
+/** Mirrors LIMITS.link in lib/rate-limit.js. */
+const LIMITS_LINK_PER_MINUTE = 10;
 const UNKNOWN_BUT_WELL_FORMED_ID = '999888777666';
 
 export async function run({ baseUrl, t, startUnboundSite }) {
-    const call = async (path, init) => {
-        const response = await fetch(`${baseUrl}${path}`, init);
+    // The endpoints are rate limited per client IP. Each block below that could
+    // approach a limit uses its own, so one group of checks cannot make a later
+    // one fail for an unrelated reason.
+    const call = async (path, init = {}, ip = '10.50.0.1') => {
+        const response = await fetch(`${baseUrl}${path}`, {
+            ...init,
+            headers: { ...(init.headers || {}), 'CF-Connecting-IP': ip }
+        });
         let body = null;
         try { body = await response.json(); } catch (error) { body = null; }
         return { status: response.status, body };
     };
-    const putProfile = (payload) => call('/api/profile', {
+    const putProfile = (payload, ip) => call('/api/profile', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload)
-    });
+    }, ip);
 
     t.describe('Resolving a username to an account');
     {
@@ -156,6 +165,48 @@ export async function run({ baseUrl, t, startUnboundSite }) {
             (await call('/api/profile', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: 'not json' })).status, 400);
     }
 
+    t.describe('Rate limiting');
+    {
+        // Cloudflare's WAF rate-limiting rules are not on every plan, so the
+        // limit is enforced in the Function against the same D1 database. These
+        // use their own IPs so they do not disturb the checks above.
+        const hammer = '10.60.0.1';
+        const bystander = '10.60.0.2';
+        const linkBody = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ username: 'torimyers' })
+        };
+
+        const statuses = [];
+        for (let i = 0; i < LIMITS_LINK_PER_MINUTE + 2; i++) {
+            statuses.push((await call('/api/profile/link', linkBody, hammer)).status);
+        }
+
+        const allowed = statuses.filter(status => status === 200).length;
+        const blocked = statuses.filter(status => status === 429).length;
+        t.equal(`the first ${LIMITS_LINK_PER_MINUTE} requests are allowed`, allowed, LIMITS_LINK_PER_MINUTE);
+        t.check('the rest are refused', blocked === 2, statuses.join(','));
+
+        const refused = await fetch(`${baseUrl}/api/profile/link`, {
+            ...linkBody,
+            headers: { ...linkBody.headers, 'CF-Connecting-IP': hammer }
+        });
+        t.equal('a blocked request answers 429', refused.status, 429);
+        t.check('and says when to come back',
+            Number(refused.headers.get('retry-after')) > 0, refused.headers.get('retry-after'));
+
+        // The limit has to be per client, or one noisy caller takes sync down
+        // for everyone.
+        const other = await call('/api/profile/link', linkBody, bystander);
+        t.equal('a different IP is unaffected', other.status, 200);
+
+        // Limits are per endpoint, so exhausting one must not close the others.
+        const stillReads = await call(`/api/profile?userId=${KNOWN_ID}`, {}, hammer);
+        t.check('and reads still work after the link limit is hit',
+            stillReads.status === 200, stillReads.status);
+    }
+
     t.describe('A deployment with sync never set up');
     {
         // How the repository ships: wrangler.toml declares no D1 binding, because
@@ -172,6 +223,16 @@ export async function run({ baseUrl, t, startUnboundSite }) {
             body: JSON.stringify({ userId: KNOWN_ID, config: { leagueName: 'x' }, updatedAt: Date.now() })
         });
         t.equal('writing one does too', write.status, 503);
+
+        const link = await fetch(`${unbound.baseUrl}/api/profile/link`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ username: 'torimyers' })
+        });
+        // Linking has nothing to store into, and with no database there is no
+        // counter to rate limit against - which would leave it an unlimited
+        // proxy onto Sleeper.
+        t.equal('linking an account is refused too', link.status, 503);
 
         const site = await fetch(`${unbound.baseUrl}/index.html`);
         t.equal('and the site itself still serves', site.status, 200);

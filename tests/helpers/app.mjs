@@ -11,6 +11,16 @@
 /** How long to let the app settle. The feature pass is behind a 750ms timer. */
 const BOOT_SETTLE_MS = 5000;
 
+/**
+ * The sync endpoints are rate limited per client IP, so every browser context
+ * gets its own - otherwise unrelated suites share one bucket and a later one
+ * fails for reasons that have nothing to do with what it is testing.
+ */
+let nextClientIp = 1;
+export function freshClientIp() {
+    return `10.99.${Math.floor(nextClientIp / 254)}.${(nextClientIp++ % 254) + 1}`;
+}
+
 /** A plausible pair of players, enough for the features that index by ID. */
 export const PLAYERS = {
     '111': { player_id: '111', full_name: 'Real Back', position: 'RB', team: 'DAL', active: true },
@@ -51,16 +61,20 @@ export function healthySleeper(url) {
  *        Runs after routing is installed but before the page is opened - the
  *        place to intercept a script file or an API route.
  * @param {number} [options.settleMs]
+ * @param {string} [options.clientIp] Rate-limit bucket; defaults to a fresh one.
  */
 export async function openApp(browser, options = {}) {
     const {
         baseUrl,
         sleeper = healthySleeper,
         beforeLoad,
-        settleMs = BOOT_SETTLE_MS
+        settleMs = BOOT_SETTLE_MS,
+        clientIp = freshClientIp()
     } = options;
 
-    const context = await browser.newContext();
+    const context = await browser.newContext({
+        extraHTTPHeaders: { 'CF-Connecting-IP': clientIp }
+    });
 
     await context.route('**://api.sleeper.app/**', route => route.fulfill({
         status: 200,

@@ -8,12 +8,17 @@
  * here - league ID, team name, scoring format and the like, all of which are
  * already public on Sleeper for anyone in the league.
  *
+ * Both are rate limited per IP against the same D1 database - see
+ * lib/rate-limit.js, which explains why the limit lives here rather than in a
+ * Cloudflare WAF rule.
+ *
  * Requires a D1 binding named DB. See schema.sql.
  */
 
-import { json, notAllowed, readJsonBody } from '../../../lib/http.js';
+import { json, notAllowed, readJsonBody, tooManyRequests } from '../../../lib/http.js';
 import { isSleeperUserId, sanitizeConfig } from '../../../lib/profile-schema.js';
 import { sleeperUserUrl } from '../../../lib/sleeper.js';
+import { LIMITS, clientKey, recordRequest } from '../../../lib/rate-limit.js';
 
 /**
  * How far ahead of the server a client's clock may be before its timestamp is
@@ -32,6 +37,9 @@ function missingBinding() {
 export async function onRequestGet(context) {
     const db = context.env.DB;
     if (!db) return missingBinding();
+
+    const limit = await recordRequest(db, 'read', clientKey(context.request), LIMITS.read);
+    if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
     const userId = new URL(context.request.url).searchParams.get('userId');
 
@@ -73,6 +81,11 @@ export async function onRequestGet(context) {
 export async function onRequestPut(context) {
     const db = context.env.DB;
     if (!db) return missingBinding();
+
+    // Counted before the body is read, so a flood of oversized requests is
+    // rejected without this deployment parsing any of them.
+    const limit = await recordRequest(db, 'write', clientKey(context.request), LIMITS.write);
+    if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
     const body = await readJsonBody(context.request);
     if (!body.ok) return json({ error: body.error }, 400);

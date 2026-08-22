@@ -96,14 +96,35 @@ deployment reads its bindings from the dashboard, so add it there too:
    - D1 database: `fantasy-profiles`
 3. Redeploy for the binding to take effect
 
-### 2.5.4 Rate-limit the endpoints
+### 2.5.4 Rate limiting (already done)
 
-The sync endpoints have no authentication by design, so put a limit in front of
-them: Cloudflare dashboard → **Security** → **WAF** → **Rate limiting rules**.
+The sync endpoints have no authentication by design, so they are rate limited
+per IP. This is enforced in the Functions themselves, against the same D1
+database, so **it needs no plan tier, no WAF rule and no extra setup** - creating
+the table in 2.5.2 is all it takes.
 
-A reasonable starting rule: if `URI Path` starts with `/api/`, allow 30 requests
-per minute per IP, then block for a minute. Normal use is a handful of requests
-per session, so this is far above what a real user generates.
+| Endpoint | Limit per IP |
+|---|---|
+| `POST /api/profile/link` | 10 / minute |
+| `PUT /api/profile` | 20 / minute |
+| `GET /api/profile` | 60 / minute |
+
+Linking is tightest because it is the only path that makes your deployment call
+Sleeper; leaving it open would turn the site into a free proxy for hammering
+their API. Over-limit requests get `429` and a `Retry-After`. A real session uses
+a handful of requests, so these are far above normal use.
+
+Details and the reasoning are in `lib/rate-limit.js`. To change a limit, edit
+`LIMITS` there.
+
+**Upgrading an existing deployment:** re-run 2.5.2. Every statement in
+`schema.sql` is `IF NOT EXISTS`, so it only adds the counter table. Until you do,
+the limiter fails open - sync keeps working, but unthrottled - and logs a warning
+on each request.
+
+If you are on a plan that includes **WAF → Rate limiting rules**, adding a rule
+on `/api/*` there as well is worth doing: it blocks abuse at the edge before it
+reaches your Functions or your D1 write quota. It is a bonus, not a requirement.
 
 ### 2.5.5 Check it
 
