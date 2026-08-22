@@ -862,6 +862,15 @@ class ConfigManager {
             localStorage.setItem('fantasyAppConfig', JSON.stringify(this.config));
             this.applyConfiguration();
             this.showNotification('✅ Configuration saved successfully!', 'success');
+
+            // Mirror to the user's other devices. Local storage has already
+            // succeeded by this point, so a sync failure is a warning, not a
+            // failed save - it must not turn a good save into an error.
+            if (this.profileSync && this.profileSync.isEnabled) {
+                this.profileSync.push({ silent: true }).catch(error => {
+                    console.warn('Could not sync configuration:', error);
+                });
+            }
             
             // Close config panel after successful save
             setTimeout(() => {

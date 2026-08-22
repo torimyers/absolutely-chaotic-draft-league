@@ -1,7 +1,7 @@
 // Fantasy Football App - Main Application Entry Point (Refactored with EventManager)
 
 // Application managers
-let configManager, navigationManager, learningManager, draftTracker, eventManager, teamManager, waiverWireManager, performanceAnalytics, leagueAnalyzer, tradeAnalyzer, playoffSimulator, weatherAnalyzer, predictiveAnalytics;
+let configManager, navigationManager, learningManager, draftTracker, eventManager, teamManager, waiverWireManager, performanceAnalytics, leagueAnalyzer, tradeAnalyzer, playoffSimulator, weatherAnalyzer, predictiveAnalytics, profileSync;
 
 // Initialize app components
 document.addEventListener('DOMContentLoaded', function() {
@@ -12,7 +12,17 @@ document.addEventListener('DOMContentLoaded', function() {
         configManager = new ConfigManager();
         navigationManager = new NavigationManager();
         learningManager = new LearningManager();
-        
+
+        // Sync is optional and must never block startup: the local setup is the
+        // source of truth, so the pull happens in the background and a failure
+        // leaves the app exactly as it would have been without it.
+        profileSync = new ProfileSync(configManager);
+        configManager.profileSync = profileSync;
+        window.profileSync = profileSync;
+        profileSync.pullOnStartup().catch(error => {
+            console.warn('Profile sync unavailable:', error);
+        });
+
         console.log('✅ Core systems initialized');
         
         // Initialize features after core is ready

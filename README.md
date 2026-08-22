@@ -70,6 +70,7 @@ Analysis" button, and is banner-labelled on the page.
 - **Styling**: Custom CSS with CSS Grid and Flexbox
 - **APIs**: Sleeper (league, rosters, players), Open-Meteo (weather), ESPN (NFL schedule) - all keyless, no signup required
 - **Hosting**: Cloudflare Pages
+- **Sync backend** (optional): Cloudflare Pages Functions + D1, used only for cross-device league settings
 - **PWA**: Installable with offline support
 
 ## 📦 Quick Start
@@ -151,10 +152,47 @@ The app is fully installable on mobile devices:
 
 ## 🔒 Privacy & Security
 
-- **No server-side storage** - All data stays in your browser
+- **Local by default** - With sync switched off (the default) nothing leaves your
+  browser, and the app is a purely static site
+- **Optional cross-device sync** - If you turn it on, your league settings only
+  are copied to a small database on the site's own Cloudflare deployment. See
+  [Cross-device sync](#-cross-device-sync) for exactly what is stored and the
+  security trade-off it makes
+- **Your draft plan is never uploaded** - Sync carries league settings only. The
+  draft plan and learning progress stay in the browser; use Save Backup to move
+  those
 - **Secure API calls** - Direct HTTPS to Sleeper, Open-Meteo and ESPN. No credentials or personal data are sent to any of them; requests carry only a league ID, a week number or a pair of coordinates
 - **No tracking** - No analytics or user tracking
 - **Open source** - Audit the code yourself
+
+## 🔄 Cross-device sync
+
+Setting your league up on a laptop and then again on a phone is a chore, so the
+configuration panel can link your setup to your Sleeper account and carry it
+between devices.
+
+**How to use it:** open ⚙️ → *Sync Across Devices* → type your Sleeper username →
+*Turn On Sync*. On your other device, do the same and it pulls the setup down.
+
+**Read this before turning it on.** This is deliberately not a password-protected
+account:
+
+- Anyone who knows your Sleeper username can read or overwrite the synced setup.
+- It is defensible only because of *what* is stored: league ID, team name, league
+  size, scoring and roster format, draft slot, theme - all of which your league
+  mates can already see on Sleeper.
+- Your draft plan and learning progress are **never** uploaded.
+- Profiles are keyed on Sleeper's stable `user_id`, resolved server-side, so a
+  renamed or recycled username cannot hand your profile to someone else.
+- The server stores only a fixed list of known settings, each range-checked, so
+  the endpoint cannot be used as a general-purpose data store.
+
+**With sync off, none of this applies** - the app behaves exactly as it always
+has, everything stays in `localStorage`, and the sync endpoints are never called.
+
+Self-hosters get the local-only behaviour for free: without a D1 binding the sync
+endpoints answer `503` and the app carries on using local storage. See
+[DEPLOYMENT.md](DEPLOYMENT.md) to enable it.
 
 ## 🤝 Contributing
 
@@ -192,6 +230,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Trade analyzer with fair value calculations
 - [x] Waiver wire priority predictions
 - [x] Playoff and championship odds
+- [x] Cross-device sync of league settings
 - [ ] Dynasty league support
 - [ ] Keeper league tools
 - [ ] Mobile app (React Native)

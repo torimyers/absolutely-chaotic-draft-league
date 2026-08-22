@@ -13,3 +13,19 @@ compatibility_date = "2024-01-01"
 
 # Static site, no build step: the repository root is what gets served.
 pages_build_output_dir = "."
+
+# Cross-device profile sync storage. The binding name is what
+# `functions/api/profile/*` reads as `env.DB`; the database itself is created
+# once with:
+#
+#   wrangler d1 create fantasy-profiles
+#   wrangler d1 execute fantasy-profiles --remote --file=./schema.sql
+#
+# Then paste the returned database_id below and add the same binding under
+# Pages project -> Settings -> Functions -> D1 database bindings, which is what
+# the deployed site actually reads. Without the binding the sync endpoints
+# answer 503 and the app carries on using local storage only.
+[[d1_databases]]
+binding = "DB"
+database_name = "fantasy-profiles"
+database_id = "PLACEHOLDER_RUN_WRANGLER_D1_CREATE"

@@ -1,7 +1,7 @@
 // Service Worker for Fantasy Football Command Center
 // Enables offline functionality and PWA features
 
-const CACHE_NAME = 'fantasy-football-v4';
+const CACHE_NAME = 'fantasy-football-v5';
 
 // App shell. Every entry is verified to exist in the repo - a missing file would
 // make cache.addAll() reject and abort the whole install, which is what silently
@@ -41,6 +41,7 @@ const PRECACHE_URLS = [
   './css/utilities/accessibility.css',
   './css/utilities/print.css',
   './js/core/config-manager.js',
+  './js/core/profile-sync.js',
   './js/core/navigation-manager.js',
   './js/core/learning-manager.js',
   './js/core/event-manager.js',
@@ -65,9 +66,12 @@ const PRECACHE_URLS = [
   './icons/icon.svg',
 ];
 
-// Requests we must never serve from cache: live fantasy data and weather forecasts.
+// Requests we must never serve from cache: live fantasy data, weather forecasts,
+// and this site's own profile-sync endpoints. The sync responses are per-user
+// and change on another device, so a cached copy is worse than no copy at all.
 function isApiRequest(url) {
-  return url.origin !== self.location.origin;
+  if (url.origin !== self.location.origin) return true;
+  return url.pathname === '/api' || url.pathname.startsWith('/api/');
 }
 
 // Install - precache the app shell. Each URL is added individually so one bad

@@ -55,6 +55,69 @@ Cloudflare builds straight from the connected repository.
 3. Click "Create deployment"
 4. Upload your files or trigger from GitHub
 
+## Step 2.5: Enable Cross-Device Sync (Optional)
+
+Skip this and the site stays a purely static deployment: the sync endpoints
+answer `503`, the configuration panel keeps working, and every setup stays in
+the browser that created it. Do it and a user can type their Sleeper username on
+a second device and pull their league settings down.
+
+Read the security note in [README.md](README.md#-cross-device-sync) first - this
+is username-keyed sync, not a password-protected account.
+
+### 2.5.1 Create the database
+
+```bash
+npx wrangler d1 create fantasy-profiles
+```
+
+Copy the `database_id` it prints into `wrangler.toml`, replacing
+`PLACEHOLDER_RUN_WRANGLER_D1_CREATE`.
+
+### 2.5.2 Create the table
+
+```bash
+npx wrangler d1 execute fantasy-profiles --remote --file=./schema.sql
+```
+
+### 2.5.3 Bind it to the Pages project
+
+`wrangler.toml` covers manual `wrangler pages deploy` runs. The Git-integrated
+deployment reads its bindings from the dashboard, so add it there too:
+
+1. Pages project → **Settings** → **Functions** → **D1 database bindings**
+2. Add a binding for both Production and Preview:
+   - Variable name: `DB`
+   - D1 database: `fantasy-profiles`
+3. Redeploy for the binding to take effect
+
+### 2.5.4 Rate-limit the endpoints
+
+The sync endpoints have no authentication by design, so put a limit in front of
+them: Cloudflare dashboard → **Security** → **WAF** → **Rate limiting rules**.
+
+A reasonable starting rule: if `URI Path` starts with `/api/`, allow 30 requests
+per minute per IP, then block for a minute. Normal use is a handful of requests
+per session, so this is far above what a real user generates.
+
+### 2.5.5 Check it
+
+```bash
+# No profile for a valid-looking ID -> 404 (endpoints are live)
+curl -i "https://texasperfect.win/api/profile?userId=123456789012"
+
+# 503 instead means the D1 binding is missing
+```
+
+### Running it locally
+
+```bash
+npx wrangler d1 execute fantasy-profiles --local --file=./schema.sql
+npx wrangler pages dev . --d1=DB=<your-database-id>
+```
+
+Local state lives in `.wrangler/` and is gitignored.
+
 ## Step 3: Verify Deployment
 
 1. Visit https://texasperfect.win
@@ -63,6 +126,7 @@ Cloudflare builds straight from the connected repository.
    - HTTPS is working (automatic with Cloudflare)
    - Service worker registers properly
    - Sleeper API calls work
+   - Your league setup survives a refresh (it should never re-prompt for it)
 
 ## Security Features Included
 
@@ -70,7 +134,10 @@ Cloudflare builds straight from the connected repository.
 ✅ **Security Headers**: Configured in `_headers` file
 ✅ **CSP**: Content Security Policy for XSS protection
 ✅ **HSTS**: Enforced via Cloudflare
-✅ **No server-side code**: Static site = reduced attack surface
+✅ **Minimal server-side code**: The only server code is the optional profile
+sync in `functions/api/profile/`, which stores a fixed, range-checked list of
+league settings and nothing else. Leave sync unconfigured and the site is fully
+static.
 
 ## Performance Optimizations
 
