@@ -56,10 +56,15 @@ class TradeAnalyzer {
             this.sleeperAPI.getTrendingPlayers('drop', 168, 200).catch(() => [])
         ]);
 
-        (adds || []).forEach(row => {
+        // getTrendingPlayers guarantees an array of row objects, and the catch
+        // above covers a failed request, so both are safe to iterate directly.
+        // The `(adds || [])` that used to stand here read as a guard but was
+        // not one - the value that actually broke this was a truthy object, and
+        // the resulting TypeError escaped initialize().
+        adds.forEach(row => {
             moves.set(String(row.player_id), (moves.get(String(row.player_id)) || 0) + (row.count || 0));
         });
-        (drops || []).forEach(row => {
+        drops.forEach(row => {
             moves.set(String(row.player_id), (moves.get(String(row.player_id)) || 0) - (row.count || 0));
         });
 
