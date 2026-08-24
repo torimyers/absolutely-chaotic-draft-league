@@ -31,7 +31,9 @@ function json(body, status, headers = {}) {
 }
 
 export async function onRequestGet({ request, env }) {
-    if (!env.DB) {
+    // PLAYERS_DB, not DB: the player cache has its own database so the daily
+    // bulk rewrite never holds a connection to the profile data.
+    if (!env.PLAYERS_DB) {
         return json({ error: 'Player database is not bound to this deployment' }, 503);
     }
 
@@ -58,7 +60,7 @@ export async function onRequestGet({ request, env }) {
     }
 
     try {
-        const meta = await readMeta(env.DB);
+        const meta = await readMeta(env.PLAYERS_DB);
 
         // No generation means the sync Worker has never completed a run. Say so
         // rather than returning an empty map the client would cache for a day.
@@ -83,7 +85,7 @@ export async function onRequestGet({ request, env }) {
             bindings.push(limit);
         }
 
-        const { results } = await env.DB.prepare(sql).bind(...bindings).all();
+        const { results } = await env.PLAYERS_DB.prepare(sql).bind(...bindings).all();
 
         const players = {};
         for (const row of results) players[row.player_id] = fromRow(row);

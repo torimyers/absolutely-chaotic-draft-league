@@ -71,13 +71,13 @@ is username-keyed sync, not a password-protected account.
 npx wrangler d1 create fantasy-profiles
 ```
 
-Then uncomment the `[[d1_databases]]` block at the bottom of `wrangler.toml` and
-paste in the `database_id` it printed.
+Note the `database_id` it prints - step 2.5.3 needs it.
 
-That block ships commented out on purpose. A Pages build that reads a binding
-for a database missing from the account fails outright, so leaving a placeholder
-ID in there would make the repository undeployable for anyone who has not done
-this step.
+`wrangler.toml` carries a commented-out block for this binding. Leave it
+commented unless you are doing a manual `wrangler pages deploy`: the
+Git-integrated deployment reads bindings from the dashboard, so uncommenting
+buys the live site nothing, while a build that names a database missing from the
+account fails outright. That is what broke the Pages check on #7.
 
 ### 2.5.2 Create the table
 
@@ -95,6 +95,10 @@ deployment reads its bindings from the dashboard, so add it there too:
    - Variable name: `DB`
    - D1 database: `fantasy-profiles`
 3. Redeploy for the binding to take effect
+
+The player cache in step 2.6 adds a second binding here, `PLAYERS_DB`. The
+dashboard is the source of truth for the Git-integrated deployment, so a binding
+that exists only in `wrangler.toml` will not be there at runtime.
 
 ### 2.5.4 Rate-limit the endpoints
 
@@ -146,24 +150,43 @@ other than Sleeper.
 
 Sleeper asks that `/players/nfl` be called at most once a day. It is roughly
 5 MB, and with nothing in front of it every visitor pays that download. This
-puts a trimmed copy in D1 - the same database as step 2.5 - refreshed once a
-day for everyone.
+puts a trimmed copy in D1, refreshed once a day for everyone.
 
 Skip it and the app fetches from Sleeper directly, exactly as it did before:
 `/api/players` answering 503 is a handled case, not an error.
 
-Step 2.5 already created the database, applied `schema.sql` (which carries the
-player tables too) and bound `DB` to the Pages project. What remains is the
-Worker that refreshes it, which is separate because Pages Functions cannot run
-on a Cron Trigger.
+This is a **second database**, separate from the sync one in step 2.5. The two
+have nothing in common and very different write patterns - profiles takes a row
+at a time from real users, this is rewritten wholesale every day - and keeping
+them apart means the refresh job never holds a connection to user data.
 
-### 2.6.1 Enable the Worker's binding
+### 2.6.1 Create the database
 
-Uncomment the `[[d1_databases]]` block at the bottom of
-`workers/player-sync/wrangler.toml` and paste in the same `database_id` used in
-step 2.5. It ships commented out for the same reason that one does.
+```bash
+npx wrangler d1 create fantasy-players
+npx wrangler d1 execute fantasy-players --remote --file=./schema-players.sql
+```
 
-### 2.6.2 Deploy the Worker
+Put the `database_id` it prints into `workers/player-sync/wrangler.toml`.
+
+That one is live rather than commented out, unlike the blocks in the repository's
+`wrangler.toml`. A Worker deploy names its bindings from its own config with no
+dashboard involved, so there is nothing to duplicate and nothing for a Pages
+build to trip over. The Pages side of this binding is configured in the
+dashboard, in the next step.
+
+### 2.6.2 Bind it to the Pages project
+
+As in step 2.5.3, the Git-integrated deployment reads bindings from the
+dashboard rather than from `wrangler.toml`:
+
+1. Pages project → **Settings** → **Functions** → **D1 database bindings**
+2. Add, for both Production and Preview:
+   - Variable name: `PLAYERS_DB`
+   - D1 database: `fantasy-players`
+3. Redeploy for the binding to take effect
+
+### 2.6.3 Deploy the Worker
 
 ```bash
 npx wrangler deploy --config workers/player-sync/wrangler.toml
@@ -171,14 +194,14 @@ npx wrangler deploy --config workers/player-sync/wrangler.toml
 
 The cron is set in that file: `12 9 * * *`, daily at 09:12 UTC.
 
-### 2.6.3 Set the manual-refresh secret
+### 2.6.4 Set the manual-refresh secret
 
 ```bash
 openssl rand -hex 32   # generate one, or use your own
 npx wrangler secret put REFRESH_SECRET --config workers/player-sync/wrangler.toml
 ```
 
-### 2.6.4 Populate it
+### 2.6.5 Populate it
 
 The cron will not fire until its next scheduled time, so run the first refresh
 by hand:
@@ -196,7 +219,7 @@ curl -X POST https://player-sync.<your-subdomain>.workers.dev/refresh \
 fantasy-relevant positions. Use the same call any time you want fresh injury
 statuses without waiting for the cron.
 
-### 2.6.5 Check it
+### 2.6.6 Check it
 
 ```bash
 curl -s -D - "https://texasperfect.win/api/players?limit=5" | head -20
@@ -206,6 +229,31 @@ curl -s -D - "https://texasperfect.win/api/players?limit=5" | head -20
 generation you are being served and when it was built. A 503 means the binding
 is missing; a 503 saying the cache is not populated means the Worker has not run
 yet.
+
+### 2.6.7 If something is not working
+
+Check what each database actually contains - a schema applied to the wrong one
+is the easiest mistake to make here, and it looks exactly like a missing
+binding:
+
+```bash
+npx wrangler d1 execute fantasy-profiles --remote \
+  --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+npx wrangler d1 execute fantasy-players --remote \
+  --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+```
+
+`fantasy-profiles` should list `profiles`. `fantasy-players` should list
+`players` and `player_cache_meta`. Anything missing means that schema file has
+not been applied to that database:
+
+```bash
+npx wrangler d1 execute fantasy-profiles --remote --file=./schema.sql
+npx wrangler d1 execute fantasy-players  --remote --file=./schema-players.sql
+```
+
+Both files are `CREATE TABLE IF NOT EXISTS`, so re-running one is safe and will
+not touch rows that are already there.
 
 
 1. Visit https://texasperfect.win

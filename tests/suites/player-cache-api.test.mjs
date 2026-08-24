@@ -58,9 +58,9 @@ export async function run({ baseUrl, t, repoRoot, persistTo, log, startUnboundSi
         t.check('and does not answer with players', !empty.body || !empty.body.p1);
     }
 
-    await execSql({ repoRoot, persistTo, log, sql: `INSERT INTO players (${columns}) VALUES ${values}, ${stale};` });
+    await execSql({ repoRoot, persistTo, log, binding: 'PLAYERS_DB', sql: `INSERT INTO players (${columns}) VALUES ${values}, ${stale};` });
     await execSql({
-        repoRoot, persistTo, log,
+        repoRoot, persistTo, log, binding: 'PLAYERS_DB',
         sql: `INSERT INTO player_cache_meta (key, value) VALUES ('current_generation', '${GENERATION}'), ` +
              `('refreshed_at', '2026-08-22T09:12:00.000Z'), ('player_count', '${SEEDED.length}') ` +
              `ON CONFLICT(key) DO UPDATE SET value = excluded.value;`
@@ -138,7 +138,7 @@ export async function run({ baseUrl, t, repoRoot, persistTo, log, startUnboundSi
         t.equal('and the table survived the attempt', Object.keys(after.body || {}).length, SEEDED.length);
     }
 
-    t.describe('With no D1 binding, as the repository ships');
+    t.describe('With no D1 binding');
     {
         const unbound = await startUnboundSite();
         const response = await fetch(`${unbound.baseUrl}/api/players`);

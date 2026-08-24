@@ -91,7 +91,7 @@ async function isAuthorized(request, secret) {
  * generation rather than on a half-written table.
  */
 async function refresh(env, trigger) {
-    if (!env.DB) throw new Error('No D1 binding named DB');
+    if (!env.PLAYERS_DB) throw new Error('No D1 binding named PLAYERS_DB');
 
     const startedAt = Date.now();
 
@@ -108,11 +108,11 @@ async function refresh(env, trigger) {
     const ids = Object.keys(payload);
     if (!ids.length) throw new Error('Sleeper returned an empty player list');
 
-    const current = await currentGeneration(env.DB);
+    const current = await currentGeneration(env.PLAYERS_DB);
     const generation = current + 1;
 
     const placeholders = PLAYER_COLUMNS.map(() => '?').join(', ');
-    const insert = env.DB.prepare(
+    const insert = env.PLAYERS_DB.prepare(
         `INSERT INTO players (generation, ${PLAYER_COLUMNS.join(', ')})
          VALUES (?, ${placeholders})`
     );
@@ -127,14 +127,14 @@ async function refresh(env, trigger) {
         statements.push(insert.bind(generation, ...toRow(id, player)));
 
         if (statements.length >= BATCH_SIZE) {
-            await env.DB.batch(statements);
+            await env.PLAYERS_DB.batch(statements);
             written += statements.length;
             statements = [];
         }
     }
 
     if (statements.length) {
-        await env.DB.batch(statements);
+        await env.PLAYERS_DB.batch(statements);
         written += statements.length;
     }
 
@@ -144,16 +144,16 @@ async function refresh(env, trigger) {
 
     // Publishing the generation is the commit point. Everything before it is
     // invisible to readers; everything after it is cleanup.
-    await env.DB.batch([
-        env.DB.prepare("INSERT INTO player_cache_meta (key, value) VALUES ('current_generation', ?) " +
+    await env.PLAYERS_DB.batch([
+        env.PLAYERS_DB.prepare("INSERT INTO player_cache_meta (key, value) VALUES ('current_generation', ?) " +
             'ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(String(generation)),
-        env.DB.prepare("INSERT INTO player_cache_meta (key, value) VALUES ('refreshed_at', ?) " +
+        env.PLAYERS_DB.prepare("INSERT INTO player_cache_meta (key, value) VALUES ('refreshed_at', ?) " +
             'ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(refreshedAt),
-        env.DB.prepare("INSERT INTO player_cache_meta (key, value) VALUES ('player_count', ?) " +
+        env.PLAYERS_DB.prepare("INSERT INTO player_cache_meta (key, value) VALUES ('player_count', ?) " +
             'ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(String(written))
     ]);
 
-    await env.DB.prepare('DELETE FROM players WHERE generation != ?').bind(generation).run();
+    await env.PLAYERS_DB.prepare('DELETE FROM players WHERE generation != ?').bind(generation).run();
 
     const result = {
         ok: true,
