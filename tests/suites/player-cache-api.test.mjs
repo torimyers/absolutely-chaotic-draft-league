@@ -12,6 +12,7 @@
  */
 
 import { execSql } from '../helpers/servers.mjs';
+import { onRequestGet as readPlayers } from '../../functions/api/players.js';
 
 export const name = 'Player cache API';
 
@@ -26,7 +27,7 @@ const SEEDED = [
     { id: 'p4', first: 'Delta', last: 'Tight', pos: 'TE', team: 'SF',  rank: null, active: 1 }
 ];
 
-export async function run({ baseUrl, t, repoRoot, persistTo, log, startUnboundSite }) {
+export async function run({ baseUrl, t, repoRoot, persistTo, log }) {
     const values = SEEDED.map(p => `(${GENERATION}, '${p.id}', '${p.first}', '${p.last}', ` +
         `'${p.first} ${p.last}', '${p.pos}', '["${p.pos}"]', '${p.team}', 27, 4, 'Active', ` +
         `${p.active}, NULL, NULL, 1, '${p.pos}', ${p.rank === null ? 'NULL' : p.rank}, ` +
@@ -140,11 +141,21 @@ export async function run({ baseUrl, t, repoRoot, persistTo, log, startUnboundSi
 
     t.describe('With no D1 binding');
     {
-        const unbound = await startUnboundSite();
-        const response = await fetch(`${unbound.baseUrl}/api/players`);
+        // Called directly rather than over HTTP. wrangler.toml carries the real
+        // bindings - Cloudflare treats it as the source of truth for a Pages
+        // project - so `wrangler pages dev` cannot be made to serve this file
+        // without them. Invoking the handler with an empty env tests the same
+        // branch, and tests our behaviour rather than wrangler's config
+        // resolution.
+        const response = await readPlayers({
+            request: new Request('https://example.test/api/players'),
+            env: {}
+        });
         t.equal('the endpoint answers 503', response.status, 503);
         t.check('as JSON, so the client can tell it apart from the SPA shell',
             (response.headers.get('content-type') || '').includes('json'),
             response.headers.get('content-type'));
+        const body = await response.json();
+        t.check('naming the binding that is missing', /not bound/i.test(body.error || ''), body.error);
     }
 }

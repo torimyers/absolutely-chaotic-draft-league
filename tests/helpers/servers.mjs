@@ -15,10 +15,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 /**
- * The repository's wrangler.toml deliberately ships with no D1 binding: naming a
- * database that is missing from the account makes a Pages deployment fail, and
- * sync is optional. The binding the API tests need lives in a test-only config
- * instead.
+ * The repository's wrangler.toml carries the real, production database ids -
+ * Cloudflare treats that file as the source of truth for a Pages project, so a
+ * binding only in the dashboard does not survive. Tests must not touch those, so
+ * a test-only config names throwaway local databases instead.
  *
  * `wrangler d1 execute` reads that config to resolve the database by name.
  * `wrangler pages dev` refuses a custom --config path, so it is handed the same
@@ -30,7 +30,7 @@ const TEST_CONFIG = 'tests/wrangler.test.toml';
 // keeps them apart because the player cache is bulk rewritten daily and has no
 // business sharing a connection with user profiles; the tests mirror that.
 const TEST_DATABASES = [
-    { binding: 'DB', name: 'fantasy-profiles-test', id: 'fantasy-profiles-test-local', schema: './schema.sql' },
+    { binding: 'PROFILES_DB', name: 'fantasy-profiles-test', id: 'fantasy-profiles-test-local', schema: './schema.sql' },
     { binding: 'PLAYERS_DB', name: 'fantasy-players-test', id: 'fantasy-players-test-local', schema: './schema-players.sql' }
 ];
 
@@ -108,13 +108,14 @@ export async function startFakeSleeper(accounts = []) {
  * own `.wrangler/` store, and the schema is applied to that same directory
  * first.
  *
- * `withDatabase: false` boots the site with no D1 binding at all, which is how
- * the repository ships and how any deployment that has not set sync up behaves.
+ * Every site booted here has both bindings. A deployment missing one cannot be
+ * reproduced through `wrangler pages dev`, because it reads the repository's own
+ * wrangler.toml; the suites that care call the Function directly instead.
  */
-export async function startSite({ repoRoot, sleeperBaseUrl, withDatabase = true, log = () => {} }) {
+export async function startSite({ repoRoot, sleeperBaseUrl, log = () => {} }) {
     const persistTo = await mkdtemp(join(tmpdir(), 'accd-tests-'));
 
-    if (withDatabase) {
+    {
         for (const database of TEST_DATABASES) {
             await runWrangler(
                 repoRoot,
@@ -136,11 +137,7 @@ export async function startSite({ repoRoot, sleeperBaseUrl, withDatabase = true,
             wranglerBin(repoRoot),
             'pages', 'dev', '.',
             '--port', String(port),
-            // Omitted deliberately when withDatabase is false, to reproduce a
-            // deployment where neither database was ever set up.
-            ...(withDatabase
-                ? TEST_DATABASES.flatMap(d => ['--d1', `${d.binding}=${d.id}`])
-                : []),
+            ...TEST_DATABASES.flatMap(d => ['--d1', `${d.binding}=${d.id}`]),
             '--persist-to', persistTo,
             '--binding', `SLEEPER_API_BASE=${sleeperBaseUrl}`
         ],
@@ -175,7 +172,7 @@ export async function startSite({ repoRoot, sleeperBaseUrl, withDatabase = true,
  * and not part of what `wrangler pages dev` boots, so its suite seeds the rows
  * directly instead.
  */
-export async function execSql({ repoRoot, persistTo, sql, binding = 'DB', log = () => {} }) {
+export async function execSql({ repoRoot, persistTo, sql, binding = 'PROFILES_DB', log = () => {} }) {
     const database = TEST_DATABASES.find(d => d.binding === binding);
     if (!database) throw new Error(`No test database bound as ${binding}`);
 
