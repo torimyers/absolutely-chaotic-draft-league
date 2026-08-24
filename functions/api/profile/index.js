@@ -30,7 +30,7 @@ function missingBinding() {
 }
 
 export async function onRequestGet(context) {
-    const db = context.env.DB;
+    const db = context.env.PROFILES_DB;
     if (!db) return missingBinding();
 
     const userId = new URL(context.request.url).searchParams.get('userId');
@@ -71,7 +71,7 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPut(context) {
-    const db = context.env.DB;
+    const db = context.env.PROFILES_DB;
     if (!db) return missingBinding();
 
     const body = await readJsonBody(context.request);

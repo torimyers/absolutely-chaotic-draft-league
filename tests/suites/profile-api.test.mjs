@@ -11,6 +11,8 @@
  * without depending on Sleeper being up.
  */
 
+import { onRequestGet as readProfile, onRequestPut as writeProfile } from '../../functions/api/profile/index.js';
+
 export const name = 'Profile sync API';
 
 export const sleeperAccounts = [
@@ -21,7 +23,7 @@ export const sleeperAccounts = [
 const KNOWN_ID = '555000111222';
 const UNKNOWN_BUT_WELL_FORMED_ID = '999888777666';
 
-export async function run({ baseUrl, t, startUnboundSite }) {
+export async function run({ baseUrl, t }) {
     const call = async (path, init) => {
         const response = await fetch(`${baseUrl}${path}`, init);
         let body = null;
@@ -158,23 +160,33 @@ export async function run({ baseUrl, t, startUnboundSite }) {
 
     t.describe('A deployment with sync never set up');
     {
-        // How the repository ships: wrangler.toml declares no D1 binding, because
-        // one naming a database missing from the account fails the Pages build.
-        // The endpoints have to say so cleanly and the site has to keep working.
-        const unbound = await startUnboundSite();
-
-        const read = await fetch(`${unbound.baseUrl}/api/profile?userId=${KNOWN_ID}`);
+        // A deployment whose PROFILES_DB binding is missing, either because it
+        // was never configured or because the account has no such database.
+        // The endpoints have to say so cleanly rather than erroring.
+        //
+        // Called directly rather than over HTTP: wrangler.toml carries the real
+        // bindings, and Cloudflare treats it as the source of truth for a Pages
+        // project, so `wrangler pages dev` cannot be made to serve this file
+        // without them. An empty env reaches the same branch, and tests the
+        // Function rather than wrangler's config resolution.
+        const read = await readProfile({
+            request: new Request(`https://example.test/api/profile?userId=${KNOWN_ID}`),
+            env: {}
+        });
         t.equal('reading a profile reports sync as unconfigured', read.status, 503);
 
-        const write = await fetch(`${unbound.baseUrl}/api/profile`, {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ userId: KNOWN_ID, config: { leagueName: 'x' }, updatedAt: Date.now() })
+        const write = await writeProfile({
+            request: new Request('https://example.test/api/profile', {
+                method: 'PUT',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ userId: KNOWN_ID, config: { leagueName: 'x' }, updatedAt: Date.now() })
+            }),
+            env: {}
         });
         t.equal('writing one does too', write.status, 503);
 
-        const site = await fetch(`${unbound.baseUrl}/index.html`);
-        t.equal('and the site itself still serves', site.status, 200);
+        // The static site is unaffected by a missing binding - covered by the
+        // Routing checks below, which run against the real server.
     }
 
     t.describe('Routing');

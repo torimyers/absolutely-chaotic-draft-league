@@ -71,13 +71,18 @@ is username-keyed sync, not a password-protected account.
 npx wrangler d1 create fantasy-profiles
 ```
 
-Note the `database_id` it prints - step 2.5.3 needs it.
+Put the `database_id` it prints into the `PROFILES_DB` block in `wrangler.toml`.
 
-`wrangler.toml` carries a commented-out block for this binding. Leave it
-commented unless you are doing a manual `wrangler pages deploy`: the
-Git-integrated deployment reads bindings from the dashboard, so uncommenting
-buys the live site nothing, while a build that names a database missing from the
-account fails outright. That is what broke the Pages check on #7.
+**That file is where bindings live, not the dashboard.** With a Wrangler
+configuration file present, Cloudflare treats it as the source of truth for a
+Pages project: the dashboard shows the same fields read-only, and a binding
+added there does not survive. A binding commented out here is a binding the
+project does not have.
+
+The flip side is that a build naming a database missing from the account fails
+outright, which is what broke the Pages check on #7. If you are setting this
+repository up in a different Cloudflare account, replace both ids with your
+own.
 
 ### 2.5.2 Create the table
 
@@ -85,20 +90,15 @@ account fails outright. That is what broke the Pages check on #7.
 npx wrangler d1 execute fantasy-profiles --remote --file=./schema.sql
 ```
 
-### 2.5.3 Bind it to the Pages project
+### 2.5.3 Redeploy
 
-`wrangler.toml` covers manual `wrangler pages deploy` runs. The Git-integrated
-deployment reads its bindings from the dashboard, so add it there too:
+Bindings attach at deploy time, so the deployment currently serving your site
+does not pick up a change to `wrangler.toml` until a new one is built. Push the
+change, or use **Deployments → latest → Retry deployment**.
 
-1. Pages project → **Settings** → **Functions** → **D1 database bindings**
-2. Add a binding for both Production and Preview:
-   - Variable name: `DB`
-   - D1 database: `fantasy-profiles`
-3. Redeploy for the binding to take effect
-
-The player cache in step 2.6 adds a second binding here, `PLAYERS_DB`. The
-dashboard is the source of truth for the Git-integrated deployment, so a binding
-that exists only in `wrangler.toml` will not be there at runtime.
+You can confirm what the project actually has under **Settings → Functions →
+D1 database bindings**. Those fields are read-only and mirror `wrangler.toml`;
+if `PROFILES_DB` is not listed there after a deploy, the file is what to fix.
 
 ### 2.5.4 Rate-limit the endpoints
 
@@ -167,24 +167,16 @@ npx wrangler d1 create fantasy-players
 npx wrangler d1 execute fantasy-players --remote --file=./schema-players.sql
 ```
 
-Put the `database_id` it prints into `workers/player-sync/wrangler.toml`.
+Put the `database_id` it prints into the `PLAYERS_DB` block in **both**
+`wrangler.toml` and `workers/player-sync/wrangler.toml`.
 
-That one is live rather than commented out, unlike the blocks in the repository's
-`wrangler.toml`. A Worker deploy names its bindings from its own config with no
-dashboard involved, so there is nothing to duplicate and nothing for a Pages
-build to trip over. The Pages side of this binding is configured in the
-dashboard, in the next step.
+Two files because they are two deployments: the Pages Function reads this
+database, the Worker writes it, and a Worker deploy does not read the Pages
+config. Keeping them in step is the one piece of duplication in this setup.
 
-### 2.6.2 Bind it to the Pages project
+### 2.6.2 Redeploy the site
 
-As in step 2.5.3, the Git-integrated deployment reads bindings from the
-dashboard rather than from `wrangler.toml`:
-
-1. Pages project → **Settings** → **Functions** → **D1 database bindings**
-2. Add, for both Production and Preview:
-   - Variable name: `PLAYERS_DB`
-   - D1 database: `fantasy-players`
-3. Redeploy for the binding to take effect
+Same as 2.5.3 - the binding only reaches the site on a new deployment.
 
 ### 2.6.3 Deploy the Worker
 
@@ -258,6 +250,19 @@ npx wrangler d1 execute fantasy-players  --remote --file=./schema-players.sql
 Both files are `CREATE TABLE IF NOT EXISTS`, so re-running one is safe and will
 not touch rows that are already there.
 
+If an endpoint answers 503 instead, read the message - the two cases are
+different and the response says which:
+
+| Response | Meaning |
+|---|---|
+| `Player database is not bound to this deployment` | no `PLAYERS_DB` binding reached the running deployment |
+| `Player cache has not been populated yet` | binding is fine; the sync Worker has not completed a run |
+| `Profile sync is not configured on this deployment` | no `PROFILES_DB` binding reached the running deployment |
+
+For the binding cases, check `wrangler.toml` first and redeploy - not the
+dashboard. The dashboard mirrors that file and cannot be edited independently,
+so a binding missing there is a binding missing from the file.
+
 
 1. Visit https://texasperfect.win
 2. Check that:
@@ -275,10 +280,11 @@ not touch rows that are already there.
 ✅ **Security Headers**: Configured in `_headers` file
 ✅ **CSP**: Content Security Policy for XSS protection
 ✅ **HSTS**: Enforced via Cloudflare
-✅ **Minimal server-side code**: Two optional Functions - profile sync in
+✅ **Minimal server-side code**: Two Functions - profile sync in
 `functions/api/profile/`, which stores a fixed, range-checked list of league
 settings and nothing else, and a read-only player-cache query in
-`functions/api/players.js`. Leave both unconfigured and the site is fully static.
+`functions/api/players.js`. Remove their bindings and both answer 503 while the
+site carries on.
 ✅ **The player cache holds no user data**: It is a trimmed copy of Sleeper's
 public player list, identical for every visitor
 ✅ **Manual refresh is authenticated**: `REFRESH_SECRET` is a Worker secret,

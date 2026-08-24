@@ -75,39 +75,27 @@ async function main() {
         });
         console.log(`Serving ${site.baseUrl}\n`);
 
-        // A second site with no D1 binding, booted only if a suite asks for it -
-        // it costs another wrangler startup. This is how the repository ships and
-        // how any deployment that has not set sync up behaves.
-        let unbound = null;
-        const startUnboundSite = async () => {
-            if (!unbound) {
-                console.log('  (booting a second site with no D1 binding...)');
-                unbound = await startSite({
-                    repoRoot, sleeperBaseUrl: sleeper.baseUrl, withDatabase: false, log
-                });
-            }
-            return unbound;
-        };
+        // There is deliberately no second, binding-free site here. wrangler.toml
+        // carries the real bindings and Cloudflare treats it as the source of
+        // truth for a Pages project, so `wrangler pages dev` cannot be made to
+        // serve this repository without them. The suites that care about a
+        // missing binding call the Function directly with an empty env instead.
 
         const results = [];
-        try {
-            for (const suite of suites) {
-                console.log(`${suite.name}`);
-                const t = new Checks(suite.name);
-                try {
-                    await suite.module.run({
-                        browser, baseUrl: site.baseUrl, sleeper, t, startUnboundSite,
-                        // For suites that need to seed a table the site only reads.
-                        repoRoot, persistTo: site.persistTo, log
-                    });
-                } catch (error) {
-                    t.check(`the suite ran to completion`, false, error.stack || error.message);
-                }
-                results.push(t);
-                console.log('');
+        for (const suite of suites) {
+            console.log(`${suite.name}`);
+            const t = new Checks(suite.name);
+            try {
+                await suite.module.run({
+                    browser, baseUrl: site.baseUrl, sleeper, t,
+                    // For suites that need to seed a table the site only reads.
+                    repoRoot, persistTo: site.persistTo, log
+                });
+            } catch (error) {
+                t.check(`the suite ran to completion`, false, error.stack || error.message);
             }
-        } finally {
-            if (unbound) await unbound.stop().catch(() => {});
+            results.push(t);
+            console.log('');
         }
 
         return report(results);

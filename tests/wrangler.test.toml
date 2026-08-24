@@ -17,7 +17,7 @@ name = "absolutely-chaotic-draft-league-tests"
 compatibility_date = "2024-01-01"
 
 [[d1_databases]]
-binding = "DB"
+binding = "PROFILES_DB"
 database_name = "fantasy-profiles-test"
 database_id = "fantasy-profiles-test-local"
 
