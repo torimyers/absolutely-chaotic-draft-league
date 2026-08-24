@@ -107,16 +107,55 @@ class WeatherAnalyzer {
     // DATA FETCHING
     // ======================
 
+    /**
+     * The week's fixtures, from this site's cached copy where there is one.
+     *
+     * The schedule for a season is fixed months ahead, so every visitor asking
+     * ESPN for the same sixteen games is waste. The cache is refreshed weekly
+     * and serves the identical shape, which is why this can prefer it and fall
+     * through without the caller noticing.
+     *
+     * The fallback is not optional politeness: a static deploy, a Docker image
+     * and a Pages project without the SCHEDULE_DB binding all have no cache, and
+     * weather has to keep working on all of them.
+     */
     async fetchSchedule(week, season) {
-        const url = `${this.SCHEDULE_API}?week=${week}&seasontype=2&dates=${season}`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            throw new Error(`Schedule request failed (${response.status})`);
+        try {
+            const cached = await this.fetchJSON(`/api/schedule?season=${season}&week=${week}`);
+            if (Array.isArray(cached) && cached.length) {
+                console.log(`🚀 Loaded week ${week} fixtures from the cached schedule`);
+                return cached;
+            }
+        } catch (error) {
+            console.warn(`⚠️ Cached schedule unavailable (${error.message}); using ESPN directly`);
         }
 
-        const data = await response.json();
+        const url = `${this.SCHEDULE_API}?week=${week}&seasontype=2&dates=${season}`;
+        const data = await this.fetchJSON(url);
         return (data.events || []).map(event => this.parseScheduleEvent(event)).filter(Boolean);
+    }
+
+    /**
+     * Fetches one URL as JSON.
+     *
+     * The content type is checked rather than assumed: a same-origin miss comes
+     * back as the SPA shell with a 200 - both the Pages catch-all rewrite and
+     * the nginx try_files in the Docker image do that - and parsing HTML as JSON
+     * surfaces as an unrelated syntax error rather than a clean fallback.
+     */
+    async fetchJSON(url) {
+        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+
+        if (!response.ok) {
+            throw new Error(`Request failed (${response.status})`);
+        }
+
+        const type = response.headers.get('Content-Type') || '';
+        if (!type.includes('json')) {
+            throw new Error(`Expected JSON from ${url}, got ${type || 'no content type'}`);
+        }
+
+        return response.json();
     }
 
     parseScheduleEvent(event) {

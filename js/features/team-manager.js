@@ -34,10 +34,43 @@ class TeamManager {
             // Get NFL state to determine current week
             const nflState = await this.sleeperAPI.fetchAPI('/state/nfl');
             this.currentWeek = nflState.week;
+            this.season = nflState.season;
             console.log(`📅 Current NFL Week: ${this.currentWeek}`);
         } catch (error) {
             console.error('❌ Error loading current week:', error);
             this.currentWeek = 1; // Default fallback
+        }
+    }
+
+    /**
+     * Loads each team's bye week from the cached schedule.
+     *
+     * Fetched once and held, so isOnBye can stay synchronous - it is called once
+     * per starter, and threading a promise through the lineup analysis to
+     * re-derive the same 32 numbers each time would be a poor trade.
+     *
+     * This used to be a table written into the source by hand. It said 2024 in a
+     * comment and was still being consulted two seasons later, which is the
+     * failure mode any hand-maintained season data eventually has.
+     */
+    async loadByeWeeks() {
+        const season = this.season;
+        if (!season) return null;
+        if (this.byeWeeks && this.byeWeeksSeason === season) return this.byeWeeks;
+
+        try {
+            const byes = await this.sleeperAPI.fetchJSON(`/api/schedule/byes?season=${season}`);
+            this.byeWeeks = byes;
+            this.byeWeeksSeason = season;
+            console.log(`📅 Loaded bye weeks for ${season}: ${Object.keys(byes).length} teams`);
+            return byes;
+        } catch (error) {
+            // No cached schedule on this deployment, or it is mid-refresh. The
+            // lineup advice simply stops mentioning byes.
+            console.warn(`⚠️ Bye weeks unavailable for ${season}: ${error.message}`);
+            this.byeWeeks = null;
+            this.byeWeeksSeason = season;
+            return null;
         }
     }
 
@@ -483,8 +516,12 @@ class LineupOptimizer {
     }
 
     async optimizeWeeklyLineup(userRoster, week) {
-        // Get all players data
-        const players = await this.sleeperAPI.fetchAPI('/players/nfl');
+        // Both are cached after the first call, so this costs nothing on repeat
+        // passes and keeps the per-starter checks below synchronous.
+        const [players] = await Promise.all([
+            this.sleeperAPI.fetchAPI('/players/nfl'),
+            this.loadByeWeeks()
+        ]);
         const { roster } = userRoster;
         
         const recommendations = [];
@@ -586,7 +623,7 @@ class LineupOptimizer {
         
         // Compare with best alternative if available
         if (alternatives.length > 0 && recommendation === 'start') {
-            const bestAlt = this.findBestAlternative(starter, alternatives);
+            const bestAlt = this.findBestAlternative(starter, alternatives, week);
             if (bestAlt && bestAlt.shouldSwap) {
                 recommendation = 'consider';
                 confidence = 65;
@@ -686,7 +723,13 @@ class LineupOptimizer {
         return insights[Math.floor(Math.random() * insights.length)];
     }
     
-    findBestAlternative(starter, alternatives) {
+    /**
+     * `week` is a parameter rather than a constant because this compares bye
+     * weeks: it previously asked whether either player was on bye in week 1,
+     * whatever week the lineup was actually for, which is only ever right in
+     * week 1 and quietly wrong for the other seventeen.
+     */
+    findBestAlternative(starter, alternatives, week) {
         if (!alternatives.length) return null;
         
         // Simple comparison logic - would be more sophisticated in production
@@ -701,7 +744,7 @@ class LineupOptimizer {
             }
             
             // Check bye week situation
-            if (this.isOnBye(starter.team, 1) && !this.isOnBye(alt.team, 1)) {
+            if (this.isOnBye(starter.team, week) && !this.isOnBye(alt.team, week)) {
                 return {
                     shouldSwap: true,
                     player: alt,
@@ -713,19 +756,16 @@ class LineupOptimizer {
         return null;
     }
     
+    /**
+     * Whether a team is on bye in a given week.
+     *
+     * Reads the map loaded by loadByeWeeks. Unknown is answered as "not on bye":
+     * a wrong bye benches a player who is playing, while a missed one only costs
+     * a note in the advice. Never guess in the direction that changes a lineup.
+     */
     isOnBye(team, week) {
-        // 2024 NFL Bye Week Schedule
-        const byeWeeks = {
-            'BUF': 12, 'MIA': 6, 'NE': 14, 'NYJ': 11,
-            'BAL': 14, 'CIN': 12, 'CLE': 10, 'PIT': 9,
-            'HOU': 14, 'IND': 14, 'JAX': 12, 'TEN': 5,
-            'DEN': 14, 'KC': 6, 'LV': 10, 'LAC': 5,
-            'DAL': 7, 'NYG': 11, 'PHI': 5, 'WAS': 14,
-            'CHI': 7, 'DET': 5, 'GB': 10, 'MIN': 6,
-            'ATL': 12, 'CAR': 11, 'NO': 12, 'TB': 11,
-            'ARI': 11, 'LAR': 6, 'SF': 9, 'SEA': 10
-        };
-        return byeWeeks[team] === week;
+        if (!this.byeWeeks || !team) return false;
+        return this.byeWeeks[team] === week;
     }
 
     async trackInjuries() {

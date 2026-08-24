@@ -25,3 +25,8 @@ database_id = "fantasy-profiles-test-local"
 binding = "PLAYERS_DB"
 database_name = "fantasy-players-test"
 database_id = "fantasy-players-test-local"
+
+[[d1_databases]]
+binding = "SCHEDULE_DB"
+database_name = "fantasy-schedule-test"
+database_id = "fantasy-schedule-test-local"
