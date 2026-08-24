@@ -21,7 +21,13 @@ const MAX_LIMIT = 12000;
 // Every value is bound, never interpolated, but the position filter is
 // validated against this set anyway so a malformed request fails fast instead
 // of silently matching nothing.
-const ALLOWED_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'LB', 'DB', 'OL', 'P']);
+//
+// These are the raw `position` values the column holds, which is not the same
+// list as FANTASY_POSITIONS: fullbacks are stored because their
+// fantasy_positions is ["RB"], but the column records them as FB, so a request
+// for FB has to be accepted or those 111 players are unreachable through this
+// filter.
+const ALLOWED_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'FB']);
 
 function json(body, status, headers = {}) {
     return new Response(JSON.stringify(body), {
