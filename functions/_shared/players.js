@@ -38,17 +38,33 @@ export const PLAYER_COLUMNS = [
     'birth_date'
 ];
 
-/** Positions that can be rostered. Anything else is not worth storing. */
-export const FANTASY_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'LB', 'DB', 'IDP_FLEX'];
+/**
+ * Positions this app can actually roster. Anything else is not worth storing.
+ *
+ * Sleeper also publishes the IDP positions - DL, LB, DB, IDP_FLEX - because it
+ * supports leagues that draft individual defenders. This app does not: its
+ * roster formats are QB-count variants and its scoring formats are PPR
+ * variants, with nowhere to configure a tackle or a linebacker slot. Keeping
+ * them cost 5,485 of 9,884 rows, 55% of the cache, for players nothing could
+ * ever look up.
+ *
+ * Adding IDP support later means putting them back here and re-running a
+ * refresh - but the roster slots and scoring are the real work, not this.
+ */
+export const FANTASY_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 
 /**
  * Whether a Sleeper player is worth keeping.
  *
- * Deliberately generous. Filtering on `active` would drop injured and
+ * Position is the axis, not `active`: filtering on that would drop injured and
  * suspended players who are still sitting on somebody's roster, and a roster
- * that references a player id we discarded renders as a blank. Position is the
- * only safe axis: an offensive lineman is never rostered in any format this
- * app supports.
+ * referencing a player id we discarded renders as a blank.
+ *
+ * `fantasy_positions` is checked first because it is the normalised form.
+ * Sleeper's raw `position` splits the defence a dozen ways - CB, SS, FS, S,
+ * DE, DT, NT, OLB, ILB - which all collapse to DL/LB/DB there. Fullbacks come
+ * the other way and are kept by it: their position is FB, their
+ * fantasy_positions is ["RB"].
  */
 export function isFantasyRelevant(player) {
     if (!player) return false;

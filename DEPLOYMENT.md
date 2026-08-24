@@ -212,12 +212,15 @@ curl -X POST https://player-sync.<your-subdomain>.workers.dev/refresh \
 ```
 
 ```json
-{"ok":true,"trigger":"manual","generation":1,"received":11400,"stored":2300,"durationMs":3100}
+{"ok":true,"trigger":"manual","generation":1,"received":11400,"stored":4400,"durationMs":3100}
 ```
 
-`received` is what Sleeper sent; `stored` is what survived filtering to
-fantasy-relevant positions. Use the same call any time you want fresh injury
-statuses without waiting for the cron.
+`received` is what Sleeper sent; `stored` is what survived filtering to the
+positions this app can roster - QB, RB, WR, TE, K, DEF, and the fullbacks that
+normalise to RB. Sleeper's list also carries every individual defender, for the
+IDP leagues it supports and this app does not; those are a little over half of
+it and are dropped. Use the same call any time you want fresh injury statuses
+without waiting for the cron.
 
 ### 2.6.6 Check it
 
