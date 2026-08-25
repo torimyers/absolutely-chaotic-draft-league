@@ -288,10 +288,15 @@ npx wrangler d1 create fantasy-schedule
 npx wrangler d1 execute fantasy-schedule --remote --file=./schema-schedule.sql
 ```
 
-Put the `database_id` into **both** `wrangler.toml` (uncommenting the
-`SCHEDULE_DB` block) and `workers/schedule-sync/wrangler.toml`, replacing the
-placeholder there. Two files because they are two deployments: the Pages
-Functions read this database, the Worker writes it.
+Put the `database_id` into **both** `wrangler.toml` and
+`workers/schedule-sync/wrangler.toml`, uncommenting the `SCHEDULE_DB` block in
+each. Two files because they are two deployments: the Pages Functions read this
+database, the Worker writes it.
+
+The binding resolves by `database_id`, not `database_name` - a correct name with
+a wrong id is still no binding, and a Worker deployed that way starts fine and
+fails at the first refresh with `No D1 binding named SCHEDULE_DB`. The
+`wrangler deploy` output lists what actually got bound; check it there.
 
 ### 2.7.2 Redeploy the site
 

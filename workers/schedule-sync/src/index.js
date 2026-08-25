@@ -13,6 +13,17 @@ import { GAME_COLUMNS, eventToGame, REGULAR_SEASON_WEEKS } from '../../../functi
 
 const DEFAULT_SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
 
+/**
+ * ESPN's scoreboard is undocumented and rejects requests with no User-Agent,
+ * which is what a Worker sends by default - the browser path never hit this
+ * because browsers always send one.
+ *
+ * Identifies the caller rather than impersonating a browser. Overridable via the
+ * SCHEDULE_USER_AGENT var if this ever stops being enough.
+ */
+const DEFAULT_USER_AGENT =
+    'absolutely-chaotic-draft-league/1.0 (+https://texasperfect.win) schedule-sync';
+
 // 20 bound parameters per statement is well inside D1's limit, and a season is
 // only ~272 games, so one batch per week keeps each round trip small.
 const BATCH_SIZE = 200;
@@ -104,11 +115,26 @@ async function refresh(env, trigger, requestedSeason = null) {
 
     for (let week = 1; week <= REGULAR_SEASON_WEEKS; week++) {
         const response = await fetch(`${source}?week=${week}&seasontype=2&dates=${season}`, {
-            headers: { Accept: 'application/json' },
+            headers: {
+                Accept: 'application/json',
+                'User-Agent': env.SCHEDULE_USER_AGENT || DEFAULT_USER_AGENT
+            },
             cf: { cacheTtl: 0 }
         });
         if (!response.ok) {
-            throw new Error(`ESPN returned ${response.status} for week ${week}`);
+            // The body carries whatever the upstream wants to say about the
+            // refusal, and a bare status code has already cost one round trip
+            // of guessing.
+            let detail = '';
+            try {
+                detail = (await response.text()).slice(0, 200).replace(/\s+/g, ' ').trim();
+            } catch {
+                detail = '(no body)';
+            }
+            throw new Error(
+                `ESPN returned ${response.status} for week ${week}` +
+                (detail ? `: ${detail}` : '')
+            );
         }
 
         const data = await response.json();
