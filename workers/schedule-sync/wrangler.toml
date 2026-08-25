@@ -20,10 +20,13 @@ crons = ["47 8 * * 2"]
 # dashboard, and no Pages build to fail - so this block ships live rather than
 # commented out.
 #
-# The id below is a placeholder: this database does not exist until someone runs
-# `wrangler d1 create fantasy-schedule`. Until it is replaced, `wrangler deploy`
-# fails immediately and says the database was not found, which is a good failure:
-# loud, local, and before anything is running.
+# A placeholder id here does NOT fail the deploy the way you would hope: wrangler
+# ships the Worker without the binding, and the first sign is a runtime error
+# from a refresh that looked like it should have worked.
+#
+# The binding also resolves by database_id, not database_name - a correct name
+# with a wrong id is still no binding. `wrangler deploy` prints what actually got
+# bound; that output is the thing to check, not this file.
 [[d1_databases]]
 binding = "SCHEDULE_DB"
 database_name = "fantasy-schedule"
