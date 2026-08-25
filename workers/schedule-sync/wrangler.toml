@@ -27,6 +27,6 @@ crons = ["47 8 * * 2"]
 [[d1_databases]]
 binding = "SCHEDULE_DB"
 database_name = "fantasy-schedule"
-database_id = "REPLACE_WITH_ID_FROM_WRANGLER_D1_CREATE"
+database_id = "ca3bb0f2-f602-4d60-a106-dc58eca6859b"
 
 # REFRESH_SECRET is a secret, not a var - set it with `wrangler secret put`.

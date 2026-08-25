@@ -53,13 +53,7 @@ database_id = "9348de19-71b8-4f62-a13c-cb44360c9b2d"
 # Cached NFL schedule. Read by functions/api/schedule/, written by
 # workers/schedule-sync.
 #
-# COMMENTED OUT until the database exists: a Pages build that names a database
-# missing from the account fails outright. Run
-# `wrangler d1 create fantasy-schedule`, paste the id in, uncomment, redeploy.
-# Until then /api/schedule answers 503 and the app fetches ESPN directly, which
-# is what it did before this cache existed.
-#
-# [[d1_databases]]
-# binding = "SCHEDULE_DB"
-# database_name = "fantasy-schedule"
-# database_id = "paste-the-id-from-wrangler-d1-create-here"
+[[d1_databases]]
+binding = "SCHEDULE_DB"
+database_name = "fantasy-schedule"
+database_id = "ca3bb0f2-f602-4d60-a106-dc58eca6859b"
