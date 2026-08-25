@@ -31,7 +31,8 @@ const TEST_CONFIG = 'tests/wrangler.test.toml';
 // business sharing a connection with user profiles; the tests mirror that.
 const TEST_DATABASES = [
     { binding: 'PROFILES_DB', name: 'fantasy-profiles-test', id: 'fantasy-profiles-test-local', schema: './schema.sql' },
-    { binding: 'PLAYERS_DB', name: 'fantasy-players-test', id: 'fantasy-players-test-local', schema: './schema-players.sql' }
+    { binding: 'PLAYERS_DB', name: 'fantasy-players-test', id: 'fantasy-players-test-local', schema: './schema-players.sql' },
+    { binding: 'SCHEDULE_DB', name: 'fantasy-schedule-test', id: 'fantasy-schedule-test-local', schema: './schema-schedule.sql' }
 ];
 
 const WRANGLER_START_TIMEOUT_MS = 120_000;

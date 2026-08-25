@@ -144,8 +144,6 @@ everywhere except tests - unset means the real API, which is what every
 deployment wants. Setting it in production would send account lookups somewhere
 other than Sleeper.
 
-## Step 3: Verify Deployment
-
 ## Step 2.6: Enable the Player Cache (Optional)
 
 Sleeper asks that `/players/nfl` be called at most once a day. It is roughly
@@ -258,11 +256,88 @@ different and the response says which:
 | `Player database is not bound to this deployment` | no `PLAYERS_DB` binding reached the running deployment |
 | `Player cache has not been populated yet` | binding is fine; the sync Worker has not completed a run |
 | `Profile sync is not configured on this deployment` | no `PROFILES_DB` binding reached the running deployment |
+| `Schedule database is not bound to this deployment` | no `SCHEDULE_DB` binding reached the running deployment |
+| `Schedule cache has not been populated yet` | binding is fine; the schedule Worker has not completed a run |
+| `Schedule for YYYY is incomplete` (409) | the cached season has missing weeks, so byes are refused rather than guessed |
 
 For the binding cases, check `wrangler.toml` first and redeploy - not the
 dashboard. The dashboard mirrors that file and cannot be edited independently,
 so a binding missing there is a binding missing from the file.
 
+
+## Step 2.7: Enable the Schedule Cache (Optional)
+
+Every visitor was fetching the same sixteen fixtures from ESPN, per week, for a
+season fixed months in advance. This caches it, and derives each team's bye week
+from it - replacing a table that was written into the source by hand and still
+said 2024 two seasons later.
+
+Skip it and the app fetches ESPN directly, as before. The one thing that changes
+without it: lineup advice stops mentioning byes, because the alternative is a
+hand-maintained list that goes wrong every August. A missed bye costs a note; a
+wrong one benches a player who is playing.
+
+A **third database**, separate from the other two: different upstream (ESPN, not
+Sleeper), different cadence (weekly, not daily), and a `games` table inside
+something called `fantasy-players` is the kind of misnaming that rots.
+
+### 2.7.1 Create the database
+
+```bash
+npx wrangler d1 create fantasy-schedule
+npx wrangler d1 execute fantasy-schedule --remote --file=./schema-schedule.sql
+```
+
+Put the `database_id` into **both** `wrangler.toml` (uncommenting the
+`SCHEDULE_DB` block) and `workers/schedule-sync/wrangler.toml`, replacing the
+placeholder there. Two files because they are two deployments: the Pages
+Functions read this database, the Worker writes it.
+
+### 2.7.2 Redeploy the site
+
+Bindings attach at deploy time. **Deployments -> latest -> Retry deployment.**
+
+### 2.7.3 Deploy the Worker
+
+```bash
+npx wrangler deploy --config workers/schedule-sync/wrangler.toml
+npx wrangler secret put REFRESH_SECRET --config workers/schedule-sync/wrangler.toml
+```
+
+Its own secret, separate from player-sync's. The cron is `47 8 * * 2` - Tuesdays
+at 08:47 UTC, after Monday night football and any flex-scheduling announcements.
+
+### 2.7.4 Populate it
+
+```bash
+curl -X POST https://schedule-sync.<your-subdomain>.workers.dev/refresh \
+  -H "Authorization: Bearer $REFRESH_SECRET"
+```
+
+```json
+{"ok":true,"trigger":"manual","season":2026,"generation":1,"weeks":18,"stored":272}
+```
+
+It fetches all 18 weeks and refuses to publish a season with any week missing -
+a bye is a week with no game, so a season with holes would derive byes for teams
+that are merely unaccounted for.
+
+Add `?season=2027` to load a different season. Before about May the coming season
+is not published and the refresh fails saying which weeks came back empty; that
+is correct, not a bug.
+
+### 2.7.5 Check it
+
+```bash
+curl -s "https://texasperfect.win/api/schedule/byes?season=2026"
+curl -s -D - "https://texasperfect.win/api/schedule?season=2026&week=1" | head -20
+```
+
+The byes endpoint returns `{"BUF":12,"MIA":6,...}`, one entry per team. A 409
+means the cached season has gaps and it is refusing to guess; the response names
+the missing weeks.
+
+## Step 3: Verify Deployment
 
 1. Visit https://texasperfect.win
 2. Check that:

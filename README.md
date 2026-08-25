@@ -71,9 +71,10 @@ Analysis" button, and is banner-labelled on the page.
 - **Styling**: Custom CSS with CSS Grid and Flexbox
 - **APIs**: Sleeper (league, rosters, players), Open-Meteo (weather), ESPN (NFL schedule) - all keyless, no signup required
 - **Hosting**: Cloudflare Pages
-- **Backend** (both optional): Cloudflare Pages Functions + D1. Two databases - cross-device league settings, and a cached copy of Sleeper's player list refreshed daily by a Worker on a Cron Trigger
+- **Backend** (all optional): Cloudflare Pages Functions + D1. Three databases - cross-device league settings, Sleeper's player list refreshed daily, and the NFL schedule refreshed weekly, the last two by Workers on Cron Triggers
 - **PWA**: Installable with offline support
 - **Caching**: Three layers for the player database - the D1 table, IndexedDB in the browser, and an in-memory map per page
+- **No hardcoded season data**: bye weeks are derived from the cached schedule rather than maintained by hand each August
 
 ## 📦 Quick Start
 

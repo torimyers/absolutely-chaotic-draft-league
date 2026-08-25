@@ -1,0 +1,32 @@
+# Refreshes the cached NFL schedule once a week.
+#
+# Separate from the Pages project because Pages Functions cannot run on a Cron
+# Trigger, and separate from player-sync because it has a different upstream
+# (ESPN), a different cadence and a different database.
+#
+# Deploy:  npx wrangler deploy --config workers/schedule-sync/wrangler.toml
+# Secret:  npx wrangler secret put REFRESH_SECRET --config workers/schedule-sync/wrangler.toml
+
+name = "schedule-sync"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# 08:47 UTC on Tuesdays - after Monday night football has finished and any flex
+# scheduling for the coming weeks has been announced.
+[triggers]
+crons = ["47 8 * * 2"]
+
+# Its own database. A Worker deploy names bindings from its own config - no
+# dashboard, and no Pages build to fail - so this block ships live rather than
+# commented out.
+#
+# The id below is a placeholder: this database does not exist until someone runs
+# `wrangler d1 create fantasy-schedule`. Until it is replaced, `wrangler deploy`
+# fails immediately and says the database was not found, which is a good failure:
+# loud, local, and before anything is running.
+[[d1_databases]]
+binding = "SCHEDULE_DB"
+database_name = "fantasy-schedule"
+database_id = "REPLACE_WITH_ID_FROM_WRANGLER_D1_CREATE"
+
+# REFRESH_SECRET is a secret, not a var - set it with `wrangler secret put`.
